@@ -24,6 +24,43 @@ brainstorm history.
 - UI lives in Lovable and gets scraped in, not hand-built here — don't
   rebuild dashboard UI from scratch in this repo.
 
+## Current state (25 Jul, backend track)
+
+Supabase project `czfjwmzwkifgozkmlsaa` is live: schema applied, 5 demo
+patients seeded with real clinical detail, one past task + completed call.
+The `copilot` Edge Function is deployed and typechecks; its tool-arg guards
+have tests (`deno test supabase/functions/copilot/`).
+
+**Blocked on:** `ANTHROPIC_API_KEY` must be set in Dashboard → Project
+Settings → Edge Functions → Secrets. Until then `/copilot` returns
+`Missing required env var`. Not the same place as project API keys or a
+local `.env`.
+
+Not built yet: `/tasks/:id/run` dispatch, `/transcribe`, `src/lib/*`
+frontend wiring, the n8n call workflow.
+
+Smoke test once the secret is set (anon key is publishable, safe in shell
+history):
+
+```sh
+curl -s -X POST "https://czfjwmzwkifgozkmlsaa.supabase.co/functions/v1/copilot" \
+  -H "Authorization: Bearer <anon key>" -H "Content-Type: application/json" \
+  -d '{"instruction":"forgot to ask John how the new tablets are treating him, ring him tomorrow"}'
+```
+
+## AI provider split
+
+Anthropic (`claude-opus-5`) for all reasoning — copilot now, post-call
+extraction later. OpenAI only for speech-to-text (`gpt-4o-transcribe`),
+because Anthropic has no audio input. Don't add a second reasoning stack
+just to use more sponsor credits.
+
+Two Opus 5 gotchas already hit, don't undo them:
+- Thinking is ON by default and shares `max_tokens`. A tight `max_tokens`
+  truncates mid-answer.
+- Do NOT disable thinking. With it off, Opus 5 can write a tool call as
+  plain text — the turn succeeds and the call silently never runs.
+
 ## Repo layout
 
 - `PROJECT.md` — problem statement, scope, architecture, team split.

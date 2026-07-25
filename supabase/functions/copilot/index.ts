@@ -65,12 +65,14 @@ Deno.serve(async (req: Request) => {
     );
     return json(result, result.status === "error" ? 500 : 200);
   } catch (err) {
-    // Full context server-side, plain message to the doctor.
     console.error("copilot failed", err);
     return json(
       {
         status: "error",
         message: "Couldn't create that task just now. Your text is still here — try again.",
+        // ponytail: demo data is fake, so surfacing the cause beats guessing.
+        // Drop `detail` before this touches a real patient record.
+        detail: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
       },
       500,
     );
