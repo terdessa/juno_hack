@@ -6,7 +6,7 @@ import { useMedleyStore } from "@/lib/medley-context";
 import { Shell } from "@/components/medley/Shell";
 import { StatusDot, statusLabel } from "@/components/medley/status";
 import { ListSkeleton } from "@/components/medley/loading";
-import { setTaskCancelled } from "@/lib/medley-api";
+import { taskAction } from "@/lib/medley-api";
 import { formatRelative, formatTime } from "@/lib/format";
 import type { CallTask } from "@/lib/types";
 
@@ -42,7 +42,7 @@ function CallsPage() {
   const decline = async (taskId: string, cancelled: boolean) => {
     setPending(taskId);
     setError(null);
-    const result = await setTaskCancelled(taskId, cancelled);
+    const result = await taskAction(taskId, cancelled ? "cancel" : "restore");
     if (!result.ok) setError(result.reason ?? "That didn't save.");
     setPending(null);
     setConfirming(null);

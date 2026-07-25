@@ -398,43 +398,24 @@ export async function updateTask(
 }
 
 /**
- * Takes a call off the queue, or puts it back.
+ * Declining, restoring or deleting a call.
  *
- * Conditional on the status it expects to find, for the same reason
- * `dispatchTask` claims conditionally: the scheduler runs every minute, and
- * declining a call at the moment it starts dialling must not leave a row
- * marked `cancelled` while a phone is actually ringing. If the row has already
- * moved on, nothing is written and the caller is told.
+ * Through an Edge Function rather than straight at the table. The anon key
+ * this client holds is public — it ships inside the JavaScript bundle — so it
+ * is granted SELECT and nothing else. Writing from here returned "permission
+ * denied for table tasks", and the fix is emphatically not to widen the grant:
+ * that would let anyone with the page open delete the practice's whole list.
+ *
+ * The function also owns the conditional update, so declining a call at the
+ * moment the scheduler starts dialling it loses cleanly and says so.
  */
-export async function setTaskCancelled(
+export async function taskAction(
   taskId: string,
-  cancelled: boolean,
+  action: "cancel" | "restore" | "delete",
 ): Promise<{ ok: boolean; reason?: string }> {
-  const from = cancelled ? "queued" : "cancelled";
-  const { data, error } = await supabase
-    .from("tasks")
-    .update({ status: cancelled ? "cancelled" : "queued" })
-    .eq("id", taskId)
-    .eq("status", from)
-    .select("id")
-    .maybeSingle();
+  const response = await postFunction("task-action", { task_id: taskId, action });
+  const body = response.body as { ok?: boolean; message?: string } | null;
 
-  if (error) return { ok: false, reason: error.message };
-  if (!data) {
-    return {
-      ok: false,
-      reason: cancelled
-        ? "That call already started, so it couldn't be declined."
-        : "That call is no longer declined.",
-    };
-  }
-  return { ok: true };
-}
-
-export async function deleteTask(taskId: string): Promise<void> {
-  // Calls reference tasks, so clear them first rather than relying on a
-  // cascade the schema doesn't declare.
-  await supabase.from("calls").delete().eq("task_id", taskId);
-  const { error } = await supabase.from("tasks").delete().eq("id", taskId);
-  if (error) throw error;
+  if (body?.ok) return { ok: true };
+  return { ok: false, reason: body?.message ?? `That didn't save (${response.status}).` };
 }

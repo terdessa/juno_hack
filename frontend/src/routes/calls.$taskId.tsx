@@ -1,12 +1,12 @@
-import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, PhoneCall, Undo2, X } from "lucide-react";
+import { ArrowLeft, PhoneCall, Trash2, Undo2, X } from "lucide-react";
 import { MedleyProvider } from "@/lib/medley-store";
 import { useMedleyStore } from "@/lib/medley-context";
 import { Shell } from "@/components/medley/Shell";
 import { MoodBadge, StatusDot, statusLabel } from "@/components/medley/status";
 import { DetailSkeleton } from "@/components/medley/loading";
-import { runTask, setTaskCancelled } from "@/lib/medley-api";
+import { runTask, taskAction } from "@/lib/medley-api";
 import { formatDate, formatDuration, formatTime } from "@/lib/format";
 
 export const Route = createFileRoute("/calls/$taskId")({
@@ -32,6 +32,9 @@ function CallPage() {
   const [dispatch, setDispatch] = useState<Dispatch>({ state: "idle" });
   const [declining, setDeclining] = useState(false);
   const [declineError, setDeclineError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const navigate = useNavigate();
   const task = tasks.find((t) => t.id === taskId);
 
   if (loading) {
@@ -71,9 +74,26 @@ function CallPage() {
 
   const setCancelled = async (cancelled: boolean) => {
     setDeclineError(null);
-    const result = await setTaskCancelled(task.id, cancelled);
+    const result = await taskAction(task.id, cancelled ? "cancel" : "restore");
     if (!result.ok) setDeclineError(result.reason ?? "That didn't save.");
     setDeclining(false);
+    await reload();
+  };
+
+  const remove = async () => {
+    setRemoving(true);
+    setDeclineError(null);
+    const result = await taskAction(task.id, "delete");
+    if (!result.ok) {
+      setDeclineError(result.reason ?? "That didn't delete.");
+      setRemoving(false);
+      setDeleting(false);
+      return;
+    }
+    // Leave before reloading: this page has nothing left to render, and the
+    // "no longer exists" message is for a stale link, not for a deletion the
+    // doctor just performed.
+    await navigate({ to: "/calls" });
     await reload();
   };
 
@@ -227,6 +247,46 @@ function CallPage() {
         <p role="alert" className="mt-3 max-w-md rounded-xl bg-flag-surface px-4 py-3 text-sm text-flag">
           {declineError}
         </p>
+      )}
+
+      {/* Deleting is separate from declining and reads that way: declining is
+          a decision about a patient, this is housekeeping about a row. It sits
+          at the bottom, away from the buttons that do something to a phone. */}
+      {task.status !== "calling" && (
+        <div className="mt-12 border-t border-border pt-5">
+          {deleting ? (
+            <div className="max-w-md">
+              <p className="text-sm font-medium">Delete this call for good?</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                The questions and anything the patient said go with it. Declining keeps the
+                record; this doesn't.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={() => void remove()}
+                  disabled={removing}
+                  className="rounded-xl bg-flag px-4 py-2.5 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-60"
+                >
+                  {removing ? "Deleting…" : "Delete permanently"}
+                </button>
+                <button
+                  onClick={() => setDeleting(false)}
+                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  Keep it
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setDeleting(true)}
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-flag"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden />
+              Delete this call
+            </button>
+          )}
+        </div>
       )}
 
       {task.summary && (

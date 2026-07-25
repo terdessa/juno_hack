@@ -99,6 +99,24 @@ Model gotchas, don't undo these:
   thinking on it — with thinking off it can write a tool call as plain
   text, and the call silently never runs.
 
+## Two things that will bite you
+
+**The anon key can only read.** It ships inside the JS bundle, so it is
+public: `anon` holds `SELECT` on every table and nothing else. Any write from
+the browser returns `permission denied for table <name>`. Writes go through an
+Edge Function holding the service-role key — `/task-action` (decline, restore,
+delete), `/tasks-run`, `/agent`. Never fix a write error by widening the grant;
+that hands every visitor a DELETE on the practice list.
+
+**Scribe needs the roster or it invents names.** Unbiased, "Mykyta Yakivets"
+transcribes as "Mykhailo Yakymets", "Tyshkovets" as "Tishkovets", "Shuliar" as
+"Shuliak" — and nothing downstream can undo it, because the real name is gone
+by then. `/transcribe` passes every patient name and medication as ElevenLabs
+`keyterms`, which fixes all three exactly. The encoding matters: **one repeated
+form field per term**. A JSON array in a single field is rejected as one
+60-character keyword, and `keyterms[]` is accepted and silently ignored, which
+is worse.
+
 ## Dead code, delete when convenient
 
 `/copilot` (function + `NewCallDialog` + `createTaskFromInstruction`) is
