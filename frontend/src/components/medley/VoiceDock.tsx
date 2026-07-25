@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, Square, X, GripHorizontal, CornerDownLeft } from "lucide-react";
+import { Mic, Square, X, GripHorizontal } from "lucide-react";
 import { useMedleyStoreOptional } from "@/lib/medley-context";
 import { useAgentConversation } from "@/lib/useAgentConversation";
 import { clearConversation } from "@/lib/conversation";
 import { closeDock } from "@/lib/dock";
 import type { UiAction } from "@/lib/medley-api";
 import { Mark } from "./Mark";
+import { TextComposer } from "./TextComposer";
 
-const WIDTH = 380;
+const WIDTH = 440;
 const MARGIN = 16;
 
 /**
@@ -112,7 +113,7 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
         transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
         width: WIDTH,
       }}
-      className="fixed left-0 top-0 flex max-h-[min(560px,80vh)] max-w-[calc(100vw-2rem)] flex-col
+      className="fixed left-0 top-0 flex max-h-[min(680px,85vh)] max-w-[calc(100vw-2rem)] flex-col
                  overflow-hidden rounded-2xl border border-border bg-popover shadow-float"
     >
       <header
@@ -151,7 +152,7 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
       </header>
 
       {messages.length > 0 && (
-        <div ref={scroller} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3.5 py-3">
+        <div ref={scroller} className="min-h-[120px] flex-1 space-y-3 overflow-y-auto px-3.5 py-3">
           {messages.map((m, i) => (
             <div key={i} className={m.role === "user" ? "flex justify-end" : ""}>
               <p
@@ -169,24 +170,19 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
         </div>
       )}
 
+      {/* The microphone sits above the box rather than beside it, so the place
+          you type gets the full width. Typing here is a sentence about a
+          patient, not a chat message, and it should be readable while it is
+          being written. */}
       <div className="shrink-0 border-t border-border p-3">
-        {status && (
-          <p
-            role={micError ? "alert" : "status"}
-            className={`mb-2.5 min-h-[1.25rem] text-micro ${micError ? "text-flag" : "text-muted-foreground"}`}
-          >
-            {status}
-          </p>
-        )}
-
-        <div className="flex items-center gap-2">
+        <div className="mb-2 flex items-center gap-2.5">
           {supported !== false && (
             <button
               type="button"
               onClick={toggleVoice}
               disabled={busy && phase !== "speaking"}
               aria-label={label}
-              className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
+              className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors ${
                 listening
                   ? "bg-live text-background"
                   : "bg-secondary text-foreground hover:bg-secondary/70"
@@ -202,38 +198,29 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
                 />
               )}
               {listening ? (
-                <Square className="relative h-3.5 w-3.5 fill-current" aria-hidden />
+                <Square className="relative h-3 w-3 fill-current" aria-hidden />
               ) : (
                 <Mic className="relative h-4 w-4" aria-hidden />
               )}
             </button>
           )}
-
-          <form
-            className="flex flex-1 items-center gap-1.5"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void send(draft, false);
-              setDraft("");
-            }}
+          <p
+            role={micError ? "alert" : "status"}
+            className={`min-w-0 flex-1 text-micro ${micError ? "text-flag" : "text-muted-foreground"}`}
           >
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder={supported === false ? "Type what you need" : "…or type it"}
-              aria-label="Message to Medley"
-              className="min-w-0 flex-1 rounded-lg bg-secondary px-3 py-2 text-body outline-none placeholder:text-muted-foreground"
-            />
-            <button
-              type="submit"
-              disabled={!draft.trim() || busy}
-              aria-label="Send"
-              className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-40"
-            >
-              <CornerDownLeft className="h-4 w-4" aria-hidden />
-            </button>
-          </form>
+            {status}
+          </p>
         </div>
+
+        <TextComposer
+          value={draft}
+          onChange={setDraft}
+          onSubmit={() => {
+            void send(draft, false);
+            setDraft("");
+          }}
+          busy={busy}
+        />
       </div>
     </section>
   );

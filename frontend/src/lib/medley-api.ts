@@ -8,7 +8,15 @@
 
 import { supabase, FUNCTIONS_URL, ANON_KEY } from "./supabase";
 import type { CallRow, Json, PatientRow, TaskRow } from "./db.types";
-import type { CallStatus, CallTag, CallTask, Mood, Patient } from "./types";
+import type {
+  Appointment,
+  AppointmentKind,
+  CallStatus,
+  CallTag,
+  CallTask,
+  Mood,
+  Patient,
+} from "./types";
 
 // --- row -> UI ------------------------------------------------------------
 
@@ -109,6 +117,37 @@ export async function fetchTasks(): Promise<CallTask[]> {
     .order("due_at", { ascending: true });
   if (error) throw error;
   return (data as TaskWithCall[]).map(toCallTask);
+}
+
+const APPOINTMENT_KINDS: AppointmentKind[] = [
+  "appointment",
+  "review",
+  "test",
+  "vaccination",
+  "home-visit",
+];
+
+/** The doctor's own diary — the appointments they keep in person. */
+export async function fetchAppointments(): Promise<Appointment[]> {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("id, patient_id, task_id, start_at, end_at, reason, kind")
+    .order("start_at", { ascending: true });
+  if (error) throw error;
+
+  return data.map((row) => ({
+    id: row.id,
+    patientId: row.patient_id,
+    startAt: row.start_at,
+    endAt: row.end_at,
+    reason: row.reason,
+    // The column is a plain text check constraint, so a value added in SQL
+    // without a matching UI change lands here rather than as a broken badge.
+    kind: APPOINTMENT_KINDS.includes(row.kind as AppointmentKind)
+      ? (row.kind as AppointmentKind)
+      : "appointment",
+    fromTaskId: row.task_id,
+  }));
 }
 
 // --- writes ---------------------------------------------------------------

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { fetchPatients, fetchTasks } from "@/lib/medley-api";
-import type { CallTask, Patient } from "@/lib/types";
+import { fetchAppointments, fetchPatients, fetchTasks } from "@/lib/medley-api";
+import type { Appointment, CallTask, Patient } from "@/lib/types";
 
 /**
  * Live dashboard data. Refetches whenever a task or call changes anywhere —
@@ -14,14 +14,20 @@ import type { CallTask, Patient } from "@/lib/types";
 export function useMedley() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [tasks, setTasks] = useState<CallTask[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [nextPatients, nextTasks] = await Promise.all([fetchPatients(), fetchTasks()]);
+      const [nextPatients, nextTasks, nextAppointments] = await Promise.all([
+        fetchPatients(),
+        fetchTasks(),
+        fetchAppointments(),
+      ]);
       setPatients(nextPatients);
       setTasks(nextTasks);
+      setAppointments(nextAppointments);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -37,6 +43,9 @@ export function useMedley() {
       .channel("medley-dashboard")
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => void load())
       .on("postgres_changes", { event: "*", schema: "public", table: "calls" }, () => void load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () =>
+        void load(),
+      )
       .subscribe();
 
     return () => {
@@ -44,5 +53,5 @@ export function useMedley() {
     };
   }, [load]);
 
-  return { patients, tasks, loading, error, reload: load };
+  return { patients, tasks, appointments, loading, error, reload: load };
 }

@@ -59,3 +59,27 @@ export interface CallTask {
   /** Why a call couldn't be placed, or why it ended without an answer. */
   error?: string;
 }
+
+/**
+ * Something already in the doctor's diary: a real appointment with a real
+ * person, in the room or on a home visit. Distinct from a `CallTask`, which is
+ * Medley phoning someone on the doctor's behalf — the calendar shows the two
+ * side by side and must never blur them.
+ */
+export type AppointmentKind =
+  | "appointment"
+  | "review"
+  | "test"
+  | "vaccination"
+  | "home-visit";
+
+export interface Appointment {
+  id: string;
+  patientId: string;
+  startAt: string;
+  endAt: string;
+  reason: string | null;
+  kind: AppointmentKind;
+  /** Set when Medley booked this off the back of a call. */
+  fromTaskId: string | null;
+}

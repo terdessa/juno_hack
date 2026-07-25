@@ -9,11 +9,13 @@
  */
 
 import { createContext, useContext } from "react";
-import type { CallTask, Patient } from "@/lib/types";
+import type { Appointment, CallTask, Patient } from "@/lib/types";
 
 export interface MedleyStore {
   patients: Patient[];
   tasks: CallTask[];
+  /** The doctor's own diary, kept separate from what Medley is doing. */
+  appointments: Appointment[];
   patientById: (id: string) => Patient | undefined;
   loading: boolean;
   error: string | null;

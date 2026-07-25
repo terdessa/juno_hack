@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Phone, User } from "lucide-react";
 import { MedleyProvider } from "@/lib/medley-store";
 import { useMedleyStore } from "@/lib/medley-context";
 import { Shell } from "@/components/medley/Shell";
 import { StatusDot } from "@/components/medley/status";
+import { WeekGrid, type WeekDay } from "@/components/medley/WeekGrid";
 import { formatTime } from "@/lib/format";
+import type { Appointment, CallTask } from "@/lib/types";
 
 export const Route = createFileRoute("/calendar")({
   head: () => ({ meta: [{ title: "Calendar · Medley" }] }),
@@ -17,8 +19,6 @@ export const Route = createFileRoute("/calendar")({
     </MedleyProvider>
   ),
 });
-
-const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function startOfWeek(d: Date) {
   const copy = new Date(d);
@@ -34,32 +34,52 @@ function addDays(d: Date, n: number) {
   return copy;
 }
 
+/** Spreads dated things across the seven days of a week. */
+function spread<T>(weekStart: Date, items: T[], dateOf: (item: T) => string): WeekDay<T>[] {
+  // Resolved here so "today" can't go stale against a render from before midnight.
+  const todayKey = new Date().toDateString();
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(weekStart, i);
+    const key = date.toDateString();
+    return {
+      date,
+      isToday: key === todayKey,
+      items: items
+        .filter((item) => new Date(dateOf(item)).toDateString() === key)
+        .sort((a, b) => dateOf(a).localeCompare(dateOf(b))),
+    };
+  });
+}
+
+/**
+ * Two calendars, one week.
+ *
+ * They are kept apart deliberately. What Medley is doing on the phone and what
+ * the doctor is doing in the room are different commitments — one runs
+ * unattended, the other needs them in a chair — and merging them into one grid
+ * would mean reading an icon to tell which is which. Stacked, the answer is the
+ * row you are looking at.
+ */
 function CalendarPage() {
-  const { tasks, patientById, loading } = useMedleyStore();
+  const { tasks, appointments, patientById, loading } = useMedleyStore();
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
 
-  const days = useMemo(() => {
-    // Resolved inside the memo so "today" can't go stale against a render that
-    // happened before midnight.
-    const todayKey = new Date().toDateString();
-    return Array.from({ length: 7 }, (_, i) => {
-      const date = addDays(weekStart, i);
-      return {
-        date,
-        isToday: date.toDateString() === todayKey,
-        items: tasks
-          .filter((t) => new Date(t.scheduledAt).toDateString() === date.toDateString())
-          .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt)),
-      };
-    });
-  }, [weekStart, tasks]);
+  const callDays = useMemo(
+    () => spread(weekStart, tasks, (t) => t.scheduledAt),
+    [weekStart, tasks],
+  );
+  const clinicDays = useMemo(
+    () => spread(weekStart, appointments, (a) => a.startAt),
+    [weekStart, appointments],
+  );
 
-  const weekTotal = days.reduce((sum, d) => sum + d.items.length, 0);
+  const callCount = callDays.reduce((n, d) => n + d.items.length, 0);
+  const clinicCount = clinicDays.reduce((n, d) => n + d.items.length, 0);
 
-  const label = `${weekStart.toLocaleDateString("en-GB", { day: "numeric", month: "long" })} – ${addDays(
-    weekStart,
-    6,
-  ).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}`;
+  const label = `${weekStart.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+  })} – ${addDays(weekStart, 6).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}`;
 
   return (
     <div>
@@ -92,57 +112,80 @@ function CalendarPage() {
         </div>
       </div>
 
-      <div className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-7">
-        {days.map(({ date, isToday, items }) => (
-          <div
-            key={date.toISOString()}
-            className={`min-h-36 p-3 ${isToday ? "bg-secondary" : "bg-card"}`}
-          >
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {DAY_NAMES[(date.getDay() + 6) % 7]}
-              </span>
-              <span
-                className={`text-sm tabular-nums ${isToday ? "font-semibold text-foreground" : "text-muted-foreground"}`}
-              >
-                {date.getDate()}
-              </span>
-              {isToday && <span className="text-xs text-muted-foreground">Today</span>}
-            </div>
-
-            {loading ? (
-              <div className="mt-3 space-y-2" aria-hidden>
-                <span className="block h-3 w-16 animate-pulse rounded bg-muted motion-reduce:animate-none" />
-                <span className="block h-3 w-24 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+      <section aria-labelledby="cal-medley">
+        <CalendarHeading
+          id="cal-medley"
+          icon={<Phone className="h-3.5 w-3.5" aria-hidden />}
+          title="Medley — calls"
+          note="Dials itself, unattended, at the time shown."
+          count={callCount}
+          loading={loading}
+        />
+        <WeekGrid
+          days={callDays}
+          loading={loading}
+          emptyLabel="No calls"
+          renderItem={(t: CallTask) => (
+            <Link
+              to="/calls/$taskId"
+              params={{ taskId: t.id }}
+              className="block rounded-lg px-2 py-1.5 transition-colors hover:bg-accent max-sm:py-2.5"
+            >
+              <div className="flex items-center gap-1.5">
+                <StatusDot status={t.status} />
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {formatTime(t.scheduledAt)}
+                </span>
               </div>
-            ) : (
-              <ul className="mt-2 space-y-1.5">
-                {items.map((t) => (
-                  <li key={t.id}>
-                    <Link
-                      to="/calls/$taskId"
-                      params={{ taskId: t.id }}
-                      className="block rounded-lg px-2 py-1.5 transition-colors hover:bg-accent max-sm:py-2.5"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <StatusDot status={t.status} />
-                        <span className="text-xs tabular-nums text-muted-foreground">
-                          {formatTime(t.scheduledAt)}
-                        </span>
-                      </div>
-                      <div className="mt-0.5 truncate text-micro font-medium">
-                        {patientById(t.patientId)?.name ?? "Unknown patient"}
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ))}
-      </div>
+              <div className="mt-0.5 truncate text-micro font-medium">
+                {patientById(t.patientId)?.name ?? "Unknown patient"}
+              </div>
+            </Link>
+          )}
+        />
+      </section>
 
-      {!loading && weekTotal === 0 && (
+      <section aria-labelledby="cal-clinic" className="mt-8">
+        <CalendarHeading
+          id="cal-clinic"
+          icon={<User className="h-3.5 w-3.5" aria-hidden />}
+          title="Your clinic"
+          note="Appointments you keep in person."
+          count={clinicCount}
+          loading={loading}
+        />
+        <WeekGrid
+          days={clinicDays}
+          loading={loading}
+          emptyLabel="Clear"
+          renderItem={(a: Appointment) => (
+            <Link
+              to="/patients/$patientId"
+              params={{ patientId: a.patientId }}
+              className="block rounded-lg px-2 py-1.5 transition-colors hover:bg-accent max-sm:py-2.5"
+            >
+              <div className="flex items-center gap-1.5">
+                {/* No status dot: an appointment in the diary has no state to
+                    report. Colour on this page means a call's condition. */}
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {formatTime(a.startAt)}
+                </span>
+                {a.kind === "home-visit" && (
+                  <span className="text-xs text-muted-foreground">· visit</span>
+                )}
+              </div>
+              <div className="mt-0.5 truncate text-micro font-medium">
+                {patientById(a.patientId)?.name ?? "Unknown patient"}
+              </div>
+              {a.reason && (
+                <div className="truncate text-xs text-muted-foreground">{a.reason}</div>
+              )}
+            </Link>
+          )}
+        />
+      </section>
+
+      {!loading && callCount === 0 && clinicCount === 0 && (
         <div className="py-10 text-center">
           <p className="text-body font-medium">Nothing scheduled this week</p>
           <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
@@ -156,6 +199,35 @@ function CalendarPage() {
           </Link>
         </div>
       )}
+    </div>
+  );
+}
+
+function CalendarHeading({
+  id,
+  icon,
+  title,
+  note,
+  count,
+  loading,
+}: {
+  id: string;
+  icon: React.ReactNode;
+  title: string;
+  note: string;
+  count: number;
+  loading: boolean;
+}) {
+  return (
+    <div className="mb-2.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+      <h2 id={id} className="flex items-center gap-1.5 text-sm font-medium">
+        <span className="text-muted-foreground">{icon}</span>
+        {title}
+      </h2>
+      <span className="text-xs tabular-nums text-muted-foreground">
+        {loading ? "…" : count === 1 ? "1 this week" : `${count} this week`}
+      </span>
+      <span className="text-xs text-muted-foreground/70">{note}</span>
     </div>
   );
 }

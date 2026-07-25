@@ -40,6 +40,8 @@ export type Database = {
           calendar_event_id: string | null;
           start_at: string;
           end_at: string;
+          reason: string | null;
+          kind: string;
           created_at: string;
         };
         Insert: {
