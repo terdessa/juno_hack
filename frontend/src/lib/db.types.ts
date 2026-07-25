@@ -32,6 +32,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      inbox_items: {
+        Row: {
+          id: string;
+          patient_id: string;
+          call_id: string | null;
+          task_id: string | null;
+          kind: string;
+          title: string;
+          detail: string | null;
+          urgency: string;
+          status: string;
+          created_at: string;
+          resolved_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          patient_id: string;
+          call_id?: string | null;
+          task_id?: string | null;
+          kind: string;
+          title: string;
+          detail?: string | null;
+          urgency?: string;
+          status?: string;
+          created_at?: string;
+          resolved_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          patient_id?: string;
+          call_id?: string | null;
+          task_id?: string | null;
+          kind?: string;
+          title?: string;
+          detail?: string | null;
+          urgency?: string;
+          status?: string;
+          created_at?: string;
+          resolved_at?: string | null;
+        };
+        Relationships: [];
+      };
       bookings: {
         Row: {
           id: string;

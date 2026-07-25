@@ -12,7 +12,7 @@ import { useMedley } from "@/hooks/useMedley";
 import { MedleyContext, type MedleyStore } from "@/lib/medley-context";
 
 export function MedleyProvider({ children }: { children: ReactNode }) {
-  const { patients, tasks, appointments, loading, error, reload } = useMedley();
+  const { patients, tasks, appointments, inbox, loading, error, reload } = useMedley();
 
   const value = useMemo<MedleyStore>(() => {
     const index = new Map(patients.map((p) => [p.id, p]));
@@ -20,12 +20,13 @@ export function MedleyProvider({ children }: { children: ReactNode }) {
       patients,
       tasks,
       appointments,
+      inbox,
       patientById: (id: string) => index.get(id),
       loading,
       error,
       reload,
     };
-  }, [patients, tasks, appointments, loading, error, reload]);
+  }, [patients, tasks, appointments, inbox, loading, error, reload]);
 
   return <MedleyContext.Provider value={value}>{children}</MedleyContext.Provider>;
 }

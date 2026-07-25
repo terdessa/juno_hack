@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PatientsIndexRouteImport } from './routes/patients.index'
@@ -16,6 +17,11 @@ import { Route as CallsIndexRouteImport } from './routes/calls.index'
 import { Route as PatientsPatientIdRouteImport } from './routes/patients.$patientId'
 import { Route as CallsTaskIdRouteImport } from './routes/calls.$taskId'
 
+const InboxRoute = InboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
@@ -50,6 +56,7 @@ const CallsTaskIdRoute = CallsTaskIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
+  '/inbox': typeof InboxRoute
   '/calls/$taskId': typeof CallsTaskIdRoute
   '/patients/$patientId': typeof PatientsPatientIdRoute
   '/calls/': typeof CallsIndexRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
+  '/inbox': typeof InboxRoute
   '/calls/$taskId': typeof CallsTaskIdRoute
   '/patients/$patientId': typeof PatientsPatientIdRoute
   '/calls': typeof CallsIndexRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
+  '/inbox': typeof InboxRoute
   '/calls/$taskId': typeof CallsTaskIdRoute
   '/patients/$patientId': typeof PatientsPatientIdRoute
   '/calls/': typeof CallsIndexRoute
@@ -77,6 +86,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/calendar'
+    | '/inbox'
     | '/calls/$taskId'
     | '/patients/$patientId'
     | '/calls/'
@@ -85,6 +95,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/calendar'
+    | '/inbox'
     | '/calls/$taskId'
     | '/patients/$patientId'
     | '/calls'
@@ -93,6 +104,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/calendar'
+    | '/inbox'
     | '/calls/$taskId'
     | '/patients/$patientId'
     | '/calls/'
@@ -102,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
+  InboxRoute: typeof InboxRoute
   CallsTaskIdRoute: typeof CallsTaskIdRoute
   PatientsPatientIdRoute: typeof PatientsPatientIdRoute
   CallsIndexRoute: typeof CallsIndexRoute
@@ -110,6 +123,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/inbox': {
+      id: '/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof InboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/calendar': {
       id: '/calendar'
       path: '/calendar'
@@ -158,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
+  InboxRoute: InboxRoute,
   CallsTaskIdRoute: CallsTaskIdRoute,
   PatientsPatientIdRoute: PatientsPatientIdRoute,
   CallsIndexRoute: CallsIndexRoute,

@@ -34,12 +34,36 @@ export interface Turn {
   text: string;
 }
 
+export const ATTENTION_KINDS = [
+  "prescription",
+  "appointment-request",
+  "symptom-concern",
+  "medication-issue",
+  "safeguarding",
+  "low-mood",
+  "callback-request",
+  "other",
+] as const;
+export type AttentionKind = (typeof ATTENTION_KINDS)[number];
+
+export const URGENCIES = ["routine", "soon", "urgent"] as const;
+export type Urgency = (typeof URGENCIES)[number];
+
+/** One thing the call left for a human to do. */
+export interface AttentionItem {
+  kind: AttentionKind;
+  title: string;
+  detail: string;
+  urgency: Urgency;
+}
+
 export interface CallOutcome {
   summary: string;
   mood: Mood;
   answers: Record<string, string>;
   tags: CallTag[];
   follow_up_type: FollowUpType;
+  attention: AttentionItem[];
 }
 
 const OUTCOME_TOOL = {
@@ -80,8 +104,43 @@ const OUTCOME_TOOL = {
         description:
           "What this patient needs next. 'none' unless the call gave a reason.",
       },
+      attention: {
+        type: "array",
+        description:
+          "Things this call left for the doctor to actually DO or DECIDE. " +
+          "Almost always empty: a call where the patient is fine and answered " +
+          "the questions produces none. Raise one only if a person must act, " +
+          "or if not seeing it would be a mistake.",
+        items: {
+          type: "object",
+          properties: {
+            kind: { type: "string", enum: [...ATTENTION_KINDS] },
+            title: {
+              type: "string",
+              description:
+                "What the doctor has to do, in a few words, starting with a " +
+                "verb or the need: \"Needs a repeat of the omeprazole\". Not a " +
+                "description of the call.",
+            },
+            detail: {
+              type: "string",
+              description:
+                "The evidence, in the patient's own terms, one sentence. What " +
+                "they actually said that makes this worth raising.",
+            },
+            urgency: {
+              type: "string",
+              enum: [...URGENCIES],
+              description:
+                "'urgent' only for something that shouldn't wait until " +
+                "tomorrow. A repeat prescription is 'soon' at most.",
+            },
+          },
+          required: ["kind", "title", "detail", "urgency"],
+        },
+      },
     },
-    required: ["summary", "mood", "answers", "tags", "follow_up_type"],
+    required: ["summary", "mood", "answers", "tags", "follow_up_type", "attention"],
   },
 };
 
@@ -98,7 +157,30 @@ first. If they were vague, say they were vague rather than filling the gap.
 
 Flags are for things a human needs to see, not for describing the call. Apply
 safeguarding-concern, depression-detected or anxiety-detected only on real
-evidence in the patient's own words.`;
+evidence in the patient's own words.
+
+# The doctor's inbox
+\`attention\` is the one part of this that interrupts someone. Everything else
+is read when the doctor opens the call; an attention item is pushed at them.
+
+Raise one only when a person must act on it, or when not seeing it would be a
+mistake. The test is: **would this still need doing tomorrow if nobody read the
+summary?**
+
+Raise one for: a prescription or repeat they've run out of; a request to be
+seen, or to be called by a human; a new or worsening symptom; a medication they
+have stopped, halved, or are reacting to; anything safeguarding; real low mood
+or distress.
+
+Do not raise one for: a patient who is fine, answers that were simply
+reassuring, a question they didn't answer, or general context worth knowing.
+"Everything's good, no side effects" produces an empty list, and that is the
+correct and most common answer.
+
+A single call usually raises none, occasionally one, and very rarely two. If
+you find yourself writing a third, you are describing the call rather than
+flagging it. A patient can be cheerful and still need a prescription: judge the
+need, not the mood.`;
 
 export async function extractOutcome(args: {
   apiKey: string;
@@ -168,7 +250,33 @@ function normalise(raw: Record<string, unknown>, questions: string[]): CallOutco
     answers,
     tags,
     follow_up_type: isFollowUp(raw.follow_up_type) ? raw.follow_up_type : "none",
+    attention: attentionItems(raw.attention),
   };
+}
+
+/**
+ * An item with no title is not an item. Dropping the malformed ones beats
+ * putting a blank row in front of a doctor, and beats throwing away the rest
+ * of a good extraction over one bad element.
+ */
+function attentionItems(raw: unknown): AttentionItem[] {
+  if (!Array.isArray(raw)) return [];
+  const items: AttentionItem[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const item = entry as Record<string, unknown>;
+    const title = typeof item.title === "string" ? item.title.trim() : "";
+    if (!title) continue;
+    items.push({
+      kind: ATTENTION_KINDS.includes(item.kind as AttentionKind)
+        ? (item.kind as AttentionKind)
+        : "other",
+      title,
+      detail: typeof item.detail === "string" ? item.detail.trim() : "",
+      urgency: URGENCIES.includes(item.urgency as Urgency) ? (item.urgency as Urgency) : "routine",
+    });
+  }
+  return items;
 }
 
 function looselyEqual(a: string, b: string): boolean {

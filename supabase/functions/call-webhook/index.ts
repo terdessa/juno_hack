@@ -91,7 +91,9 @@ async function ingest(db: SupabaseClient, payload: WebhookPayload) {
 
   const { data: call, error } = await db
     .from("calls")
-    .select("id, task_id, tasks(id, purpose, instruction_raw, questions, patients(name))")
+    .select(
+      "id, task_id, tasks(id, patient_id, purpose, instruction_raw, questions, patients(name))",
+    )
     .eq("elevenlabs_conversation_id", conversationId)
     .maybeSingle();
 
@@ -102,6 +104,7 @@ async function ingest(db: SupabaseClient, payload: WebhookPayload) {
 
   const task = call.tasks as unknown as {
     id: string;
+    patient_id: string;
     purpose: string | null;
     instruction_raw: string;
     questions: unknown;
@@ -165,6 +168,26 @@ async function ingest(db: SupabaseClient, payload: WebhookPayload) {
   if (updateError) throw new Error(updateError.message);
 
   if (task) await db.from("tasks").update({ status: "completed" }).eq("id", task.id);
+
+  // The inbox. Written last and never allowed to fail the delivery: the call
+  // record is the thing ElevenLabs will not send twice, and losing it to a
+  // failed insert on a derived table would be a bad trade. A missing inbox row
+  // is recoverable from the summary; a missing transcript is not.
+  if (outcome.attention.length && task?.patient_id) {
+    const { error: inboxError } = await db.from("inbox_items").insert(
+      outcome.attention.map((item) => ({
+        patient_id: task.patient_id,
+        call_id: call.id,
+        task_id: task.id,
+        kind: item.kind,
+        title: item.title,
+        detail: item.detail || null,
+        urgency: item.urgency,
+        status: "open",
+      })),
+    );
+    if (inboxError) console.error("inbox insert failed", inboxError.message);
+  }
 
   return { status: "recorded", outcome: "completed", call_id: call.id };
 }

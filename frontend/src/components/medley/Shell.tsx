@@ -1,5 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { MessageSquare, ListChecks, Users, CalendarDays, RotateCw, Command } from "lucide-react";
+import {
+  MessageSquare,
+  ListChecks,
+  Users,
+  CalendarDays,
+  Inbox,
+  RotateCw,
+  Command,
+} from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useMedleyStoreOptional } from "@/lib/medley-context";
 import { Mark } from "./Mark";
@@ -9,6 +17,9 @@ import { useAgentActions } from "@/lib/useAgentActions";
 
 const NAV = [
   { to: "/", label: "Medley", icon: MessageSquare },
+  // Directly under Medley, above the lists: this is the one nav item that has
+  // something to say on its own.
+  { to: "/inbox", label: "Inbox", icon: Inbox },
   { to: "/calls", label: "Calls", icon: ListChecks },
   { to: "/patients", label: "Patients", icon: Users },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
@@ -50,6 +61,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
   const live = store?.tasks.find((t) => t.status === "calling");
   const error = store?.error;
+  const waiting = store?.inbox.filter((i) => i.status === "open") ?? [];
 
   const retry = async () => {
     if (!store) return;
@@ -98,6 +110,23 @@ export function Shell({ children }: { children: ReactNode }) {
                   aria-hidden
                 />
                 <span className={to === "/" ? "sr-only md:not-sr-only" : ""}>{label}</span>
+                {/* The count is the whole reason the inbox exists: it has to be
+                    true on every screen, not just when someone opens it. */}
+                {to === "/inbox" && waiting.length > 0 && (
+                  <span
+                    className={`ml-auto min-w-5 rounded-full px-1.5 py-0.5 text-center text-micro font-medium tabular-nums ${
+                      waiting.some((i) => i.urgency === "urgent")
+                        ? "bg-flag text-background"
+                        : "bg-foreground text-background"
+                    }`}
+                  >
+                    {waiting.length}
+                    <span className="sr-only">
+                      {" "}
+                      waiting{waiting.some((i) => i.urgency === "urgent") ? ", one urgent" : ""}
+                    </span>
+                  </span>
+                )}
               </Link>
             );
           })}

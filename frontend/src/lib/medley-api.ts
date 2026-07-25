@@ -11,6 +11,10 @@ import type { CallRow, Json, PatientRow, TaskRow } from "./db.types";
 import type {
   Appointment,
   AppointmentKind,
+  InboxItem,
+  InboxKind,
+  InboxStatus,
+  InboxUrgency,
   CallStatus,
   CallTag,
   CallTask,
@@ -148,6 +152,53 @@ export async function fetchAppointments(): Promise<Appointment[]> {
       : "appointment",
     fromTaskId: row.task_id,
   }));
+}
+
+const INBOX_KINDS: InboxKind[] = [
+  "prescription",
+  "appointment-request",
+  "symptom-concern",
+  "medication-issue",
+  "safeguarding",
+  "low-mood",
+  "callback-request",
+  "other",
+];
+
+/** Everything still waiting on the doctor, most recent first. */
+export async function fetchInbox(): Promise<InboxItem[]> {
+  const { data, error } = await supabase
+    .from("inbox_items")
+    .select("id, patient_id, call_id, task_id, kind, title, detail, urgency, status, created_at")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+
+  return data.map((row) => ({
+    id: row.id,
+    patientId: row.patient_id,
+    callId: row.call_id,
+    taskId: row.task_id,
+    // The column is a text check constraint, so an unknown value lands as
+    // "other" rather than as a broken badge.
+    kind: INBOX_KINDS.includes(row.kind as InboxKind) ? (row.kind as InboxKind) : "other",
+    title: row.title,
+    detail: row.detail,
+    urgency: (row.urgency ?? "routine") as InboxUrgency,
+    status: (row.status ?? "open") as InboxStatus,
+    createdAt: row.created_at,
+  }));
+}
+
+/** Clearing an item. Server-side, like every other write — see `taskAction`. */
+export async function inboxAction(
+  itemId: string,
+  action: "done" | "dismiss" | "reopen",
+): Promise<{ ok: boolean; reason?: string }> {
+  const response = await postFunction("inbox-action", { item_id: itemId, action });
+  const body = response.body as { ok?: boolean; message?: string } | null;
+  if (body?.ok) return { ok: true };
+  return { ok: false, reason: body?.message ?? `That didn't save (${response.status}).` };
 }
 
 // --- writes ---------------------------------------------------------------

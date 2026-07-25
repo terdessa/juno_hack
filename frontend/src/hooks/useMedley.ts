@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { fetchAppointments, fetchPatients, fetchTasks } from "@/lib/medley-api";
-import type { Appointment, CallTask, Patient } from "@/lib/types";
+import { fetchAppointments, fetchInbox, fetchPatients, fetchTasks } from "@/lib/medley-api";
+import type { Appointment, CallTask, InboxItem, Patient } from "@/lib/types";
 
 /**
  * Live dashboard data. Refetches whenever a task or call changes anywhere —
@@ -15,19 +15,22 @@ export function useMedley() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [tasks, setTasks] = useState<CallTask[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [inbox, setInbox] = useState<InboxItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [nextPatients, nextTasks, nextAppointments] = await Promise.all([
+      const [nextPatients, nextTasks, nextAppointments, nextInbox] = await Promise.all([
         fetchPatients(),
         fetchTasks(),
         fetchAppointments(),
+        fetchInbox(),
       ]);
       setPatients(nextPatients);
       setTasks(nextTasks);
       setAppointments(nextAppointments);
+      setInbox(nextInbox);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -46,6 +49,11 @@ export function useMedley() {
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () =>
         void load(),
       )
+      // The whole point of the inbox is that it arrives without being asked
+      // for: a call finishing anywhere must light the badge here.
+      .on("postgres_changes", { event: "*", schema: "public", table: "inbox_items" }, () =>
+        void load(),
+      )
       .subscribe();
 
     return () => {
@@ -53,5 +61,5 @@ export function useMedley() {
     };
   }, [load]);
 
-  return { patients, tasks, appointments, loading, error, reload: load };
+  return { patients, tasks, appointments, inbox, loading, error, reload: load };
 }

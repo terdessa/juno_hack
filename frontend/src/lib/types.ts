@@ -83,3 +83,39 @@ export interface Appointment {
   /** Set when Medley booked this off the back of a call. */
   fromTaskId: string | null;
 }
+
+/**
+ * Something a call left for the doctor to do.
+ *
+ * Deliberately narrow. A call can go perfectly well and still need a person —
+ * "I'm fine, but I've run out of my tablets" — and it is that half, not the
+ * summary, that has to survive nobody opening the call. A routine call where
+ * everything was fine produces none of these at all.
+ */
+export type InboxKind =
+  | "prescription"
+  | "appointment-request"
+  | "symptom-concern"
+  | "medication-issue"
+  | "safeguarding"
+  | "low-mood"
+  | "callback-request"
+  | "other";
+
+export type InboxUrgency = "routine" | "soon" | "urgent";
+export type InboxStatus = "open" | "done" | "dismissed";
+
+export interface InboxItem {
+  id: string;
+  patientId: string;
+  callId: string | null;
+  taskId: string | null;
+  kind: InboxKind;
+  /** What the doctor has to do, in a few words. */
+  title: string;
+  /** What the patient actually said that makes it worth raising. */
+  detail: string | null;
+  urgency: InboxUrgency;
+  status: InboxStatus;
+  createdAt: string;
+}
