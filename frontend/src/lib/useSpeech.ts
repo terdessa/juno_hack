@@ -85,23 +85,35 @@ export function useSpeech({ onTranscript, onPartial, onSilence, onError }: Speec
   }, []);
 
   useEffect(() => {
-    const Ctor = recognitionCtor();
-    if (!Ctor) {
-      // No local recogniser. Record the utterance and send it to be
-      // transcribed — slower, but the alternative here is a dead microphone.
-      mode.current = canRecord() ? "upload" : null;
-      setSupported(mode.current !== null);
+    // Scribe first, even in Chrome. The browser's recogniser is faster — it
+    // returns words while they're still being spoken — but it mishears
+    // accented English and clinical vocabulary, which between them are most of
+    // what gets said to this thing. It also ends the turn the moment it thinks
+    // a sentence finished, so pausing to think hangs up on you. A second of
+    // upload buys a model that does neither.
+    if (canRecord()) {
+      mode.current = "upload";
+      setSupported(true);
       return () => {
         recording.current?.cancel();
         recording.current = null;
       };
+    }
+
+    const Ctor = recognitionCtor();
+    if (!Ctor) {
+      mode.current = null;
+      setSupported(false);
+      return;
     }
     mode.current = "native";
     setSupported(true);
 
     const r = new Ctor();
     r.lang = "en-GB";
-    r.continuous = false;
+    // Keep listening across pauses. False ends the turn at the first silence,
+    // which is the "it stopped listening" complaint.
+    r.continuous = true;
     r.interimResults = true;
 
     r.onresult = (e) => {

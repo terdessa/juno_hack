@@ -21,6 +21,12 @@ import { extractOutcome, type Turn } from "./extract.ts";
 const SIGNATURE_TOLERANCE_SECONDS = 30 * 60;
 
 Deno.serve(async (req: Request) => {
+  // A GET is someone — a human in a browser, or a provider validating the URL
+  // before it will save it — asking "is anything here?". Answering 405 reads as
+  // broken to both, so say yes plainly. Nothing is done and nothing is read.
+  if (req.method === "GET") {
+    return json({ status: "ready", endpoint: "call-webhook", accepts: "POST" });
+  }
   if (req.method !== "POST") {
     return new Response("Method not allowed.", { status: 405 });
   }
