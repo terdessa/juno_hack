@@ -1,0 +1,12 @@
+project_id = "czfjwmzwkifgozkmlsaa"
+
+# Every function is deployed with `supabase functions deploy`, so the one
+# setting that must not be forgotten lives here rather than in a flag someone
+# has to remember to type.
+#
+# call-webhook is called by ElevenLabs, which signs its requests with an HMAC
+# and knows nothing about Supabase tokens. With the platform's JWT gate on, every
+# transcript delivery would be rejected at the door and the loop would silently
+# never close. The function verifies the HMAC itself — see its header.
+[functions.call-webhook]
+verify_jwt = false

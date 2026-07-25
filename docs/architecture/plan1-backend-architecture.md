@@ -1,5 +1,20 @@
 # Plan 1 Architecture: Backend + Copilot Pipeline
 
+> ⚠️ **Partly superseded — read `CLAUDE.md` and `PROJECT.md` first.**
+>
+> Written before the build. Still accurate on the shape of things: reads
+> bypass the API layer, tools re-validate LLM args, patient data is pulled
+> not dumped, secrets stay server-side.
+>
+> Out of date on specifics:
+> - `/copilot` was replaced by `/agent`, a multi-turn conversational agent.
+>   The one-shot request pipeline in §3 no longer exists.
+> - The model is Haiku 4.5, not Sonnet 5.
+> - `/tasks-run` calls ElevenLabs, not n8n. n8n is kept for the post-call
+>   workflow only.
+> - `/transcribe` was never built — voice uses the browser's speech engine.
+> - The schema grew considerably when the UI became the spec.
+
 Concrete architecture for the backend track. Plan 1
 (`docs/plans/2026-07-25-website-backend-plan.md`) says *what* to build;
 this says *how*, with the exact tools, models, contracts and logic.
@@ -13,7 +28,7 @@ this says *how*, with the exact tools, models, contracts and logic.
 | API runtime | **Supabase Edge Functions** (Deno, TypeScript) | Already using Supabase for data; one deploy target, no separate server to host. Anthropic/OpenAI SDKs work in Deno. |
 | Database | **Supabase Postgres** | Sponsor tool. Realtime subscriptions give the live dashboard update for free — no polling code. |
 | Frontend hosting | **Vercel** | Sponsor tool. Lovable output is a React SPA; Vercel is the zero-config host for it. |
-| Copilot LLM | **Claude Sonnet 5** (`claude-sonnet-5`) | Anthropic credits. Strong multi-step tool use — the copilot is a tool loop, not a one-shot extractor. |
+| Dashboard agent LLM | **Claude Haiku 4.5** (`claude-haiku-4-5`) | Anthropic credits. Fastest of the family, and the agent sits on the interactive path where the doctor is watching. Note it predates adaptive thinking and `effort` — sending either returns a 400. |
 | Voice → text (doctor's mic) | **OpenAI `gpt-4o-transcribe`** | OpenAI credits. More robust in a noisy hackathon venue than browser Web Speech API, and not Chrome-locked. |
 | Post-call extraction | **Claude Sonnet 5**, structured output | Owned by Plan 2, but writes into this schema — listed here so the contract is in one place. |
 | Patient call voice | **ElevenLabs Conversational AI** | Sponsor tool. Owns the whole live audio path (see Plan 2). |

@@ -1,0 +1,322 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Medley.
+ *
+ * Colour means clinical state and nothing else. The canvas is a true
+ * neutral at chroma 0 — no warm tint, because a cream near-white is the
+ * saturated AI default and reads as generated. Nothing is coloured for
+ * decoration: primary actions are ink-filled, surfaces are grey.
+ *
+ * Hue appears on exactly four things — a live call, an overdue follow-up,
+ * a clinical flag, a completed call. When only those carry colour, a
+ * doctor reads the screen from a metre away without hunting, and a quiet
+ * overdue case is as visually loud as an urgent one.
+ *
+ * Warmth is carried by the serif and the copy, not the surface.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-live: var(--live);
+  --color-live-foreground: var(--live-foreground);
+  --color-live-surface: var(--live-surface);
+  --color-overdue: var(--overdue);
+  --color-overdue-surface: var(--overdue-surface);
+  --color-flag: var(--flag);
+  --color-flag-surface: var(--flag-surface);
+  --color-done: var(--done);
+  --color-done-surface: var(--done-surface);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  /* Paired on a contrast axis (serif vs grotesque), not two geometric
+     sans-serifs. The serif is reserved for patient names and page titles. */
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Newsreader", ui-serif, Georgia, serif;
+
+  /*
+   * Three named body sizes on a ~1.125 ratio, replacing the eyeballed
+   * text-[13px] / [15px] / [17px] that were scattered through the surface.
+   * Named sizes are greppable; arbitrary ones drift every time someone adds a
+   * component. Tailwind's own scale still handles headings.
+   *
+   * micro   — dense metadata: timestamps, chips, table furniture
+   * body    — the default for interface text
+   * reading — prose the doctor actually reads: summaries, transcripts, replies
+   */
+  --text-micro: 0.8125rem;
+  --text-micro--line-height: 1.45;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.6;
+  --text-reading: 1.0625rem;
+  --text-reading--line-height: 1.65;
+}
+
+:root {
+  --radius: 0.625rem;
+
+  /* Canvas — true neutral, chroma 0. Deliberately not warm. */
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.21 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0 0);
+
+  /* Primary action is ink, not a hue — colour is reserved for state. */
+  --primary: oklch(0.21 0 0);
+  --primary-foreground: oklch(0.99 0 0);
+  --primary-soft: oklch(0.93 0 0);
+  --secondary: oklch(0.955 0 0);
+  --secondary-foreground: oklch(0.27 0 0);
+  --muted: oklch(0.955 0 0);
+  --muted-foreground: oklch(0.47 0 0);   /* measured 6.5:1 on canvas — AA */
+  --accent: oklch(0.94 0 0);
+  --accent-foreground: oklch(0.24 0 0);
+
+  /* The only saturated tokens in the system. Each means one clinical thing. */
+  --live: oklch(0.55 0.20 25);           /* a call happening right now */
+  --live-foreground: oklch(0.99 0 0);
+  --live-surface: oklch(0.96 0.03 25);
+  --overdue: oklch(0.52 0.13 65);        /* past due, nobody has acted */
+  --overdue-surface: oklch(0.96 0.035 75);
+  --flag: oklch(0.48 0.19 18);           /* safeguarding, low mood */
+  --flag-surface: oklch(0.96 0.03 18);
+  --done: oklch(0.46 0.10 155);          /* call completed */
+  --done-surface: oklch(0.95 0.03 155);
+
+  --destructive: var(--flag);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: var(--done);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: var(--overdue);
+  --warning-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.915 0 0);
+  /* Inputs carry a darker edge than dividers do. The original 0.89 measured
+     1.39:1 on a white card, so the primary input of the product was effectively
+     invisible; WCAG 1.4.11 wants 3:1 for a boundary that's the only thing
+     identifying a control. This lands at ~3:1 and reads as a deliberate field
+     rather than a hairline.
+     --border stays quiet at 1.23:1 on purpose: dividers between list rows are
+     structure, not controls, and darkening them turns the lists into a grid. */
+  --input: oklch(0.68 0 0);
+  --ring: oklch(0.21 0 0);
+  --sidebar: oklch(0.975 0 0);
+  --sidebar-foreground: oklch(0.27 0 0);
+  --sidebar-primary: oklch(0.21 0 0);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.94 0 0);
+  --sidebar-accent-foreground: oklch(0.24 0 0);
+  --sidebar-border: oklch(0.915 0 0);
+  --sidebar-ring: oklch(0.21 0 0);
+
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.04), 0 2px 8px oklch(0 0 0 / 0.04);
+  --shadow-float: 0 12px 40px oklch(0 0 0 / 0.12), 0 2px 8px oklch(0 0 0 / 0.06);
+}
+
+.dark {
+  /* Same rule: neutral surfaces, hue only where it means something. */
+  --background: oklch(0.17 0 0);
+  --foreground: oklch(0.96 0 0);
+  --card: oklch(0.21 0 0);
+  --card-foreground: oklch(0.96 0 0);
+  --popover: oklch(0.21 0 0);
+  --popover-foreground: oklch(0.96 0 0);
+  --primary: oklch(0.96 0 0);
+  --primary-foreground: oklch(0.19 0 0);
+  --primary-soft: oklch(0.3 0 0);
+  --secondary: oklch(0.25 0 0);
+  --secondary-foreground: oklch(0.96 0 0);
+  --muted: oklch(0.25 0 0);
+  --muted-foreground: oklch(0.72 0 0);
+  --accent: oklch(0.28 0 0);
+  --accent-foreground: oklch(0.96 0 0);
+
+  --live: oklch(0.72 0.18 28);
+  --live-foreground: oklch(0.17 0 0);
+  --live-surface: oklch(0.29 0.06 28);
+  --overdue: oklch(0.78 0.13 75);
+  --overdue-surface: oklch(0.30 0.05 75);
+  --flag: oklch(0.68 0.18 20);
+  --flag-surface: oklch(0.29 0.06 20);
+  --done: oklch(0.72 0.12 158);
+  --done-surface: oklch(0.27 0.05 158);
+
+  --destructive: var(--flag);
+  --destructive-foreground: oklch(0.17 0 0);
+  --success: var(--done);
+  --success-foreground: oklch(0.17 0 0);
+  --warning: var(--overdue);
+  --warning-foreground: oklch(0.17 0 0);
+
+  --border: oklch(0.29 0 0);
+  --input: oklch(0.48 0 0);
+  --ring: oklch(0.85 0 0);
+  --sidebar: oklch(0.19 0 0);
+  --sidebar-foreground: oklch(0.9 0 0);
+  --sidebar-primary: oklch(0.96 0 0);
+  --sidebar-primary-foreground: oklch(0.19 0 0);
+  --sidebar-accent: oklch(0.27 0 0);
+  --sidebar-accent-foreground: oklch(0.96 0 0);
+  --sidebar-border: oklch(0.28 0 0);
+  --sidebar-ring: oklch(0.85 0 0);
+
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.4), 0 2px 8px oklch(0 0 0 / 0.4);
+  --shadow-float: 0 12px 40px oklch(0 0 0 / 0.6), 0 2px 8px oklch(0 0 0 / 0.4);
+}
+
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+    font-weight: 500;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+
+  /*
+   * One focus indicator for the whole product, defined once. Per-component
+   * focus rings are how a surface ends up with focus visible on four controls
+   * and invisible on the two that matter. --ring is ink in both themes, so
+   * this clears AA against every surface we have.
+   */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
+@utility shadow-soft {
+  box-shadow: var(--shadow-soft);
+}
+@utility shadow-float {
+  box-shadow: var(--shadow-float);
+}
+
+@utility pulse-dot {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 9999px;
+    background: currentColor;
+    opacity: 0.35;
+    animation: pulse-ring 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.6); opacity: 0.5; }
+  80%, 100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* A ring leaving the microphone while it's listening. The only thing on the
+   home screen that moves continuously, so it reads as "live" without needing
+   a colour that would collide with clinical state. */
+@utility mic-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1px solid currentColor;
+  opacity: 0;
+  animation: mic-ring 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes mic-ring {
+  0% { transform: scale(1); opacity: 0.45; }
+  100% { transform: scale(1.75); opacity: 0; }
+}
+
+@utility eq-bar {
+  animation: eq-bar 900ms cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes eq-bar {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+
+/*
+ * Reduced motion. Every animation above communicates a state, so each needs a
+ * still equivalent rather than simply being switched off: the ring holds at a
+ * visible opacity, the bars hold at full height. Unlayered, so it wins against
+ * the utilities layer above.
+ */
+/*
+ * 13px metadata is comfortable on a consulting-room monitor and too small on a
+ * phone held at arm's length, so the densest step relaxes to 14px below the
+ * first breakpoint. Unlayered, to beat the utility it overrides.
+ */
+@media (max-width: 39.9375rem) {
+  .text-micro {
+    font-size: 0.875rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot::before {
+    animation: none;
+    opacity: 0.3;
+  }
+  .mic-ring {
+    animation: none;
+    opacity: 0.35;
+  }
+  .eq-bar {
+    animation: none;
+    transform: scaleY(0.7);
+  }
+}

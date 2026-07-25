@@ -48,3 +48,18 @@ create table bookings (
 
 alter publication supabase_realtime add table tasks;
 alter publication supabase_realtime add table calls;
+
+-- Tables created this way get only REFERENCES/TRIGGER/TRUNCATE by default,
+-- which makes every PostgREST request fail with a permission error — including
+-- ones made with the service role. Grant DML explicitly.
+grant select, insert, update, delete on all tables in schema public to service_role;
+
+-- anon is the browser's identity: dashboard reads (and realtime) only.
+-- All writes go through Edge Functions under the service role.
+grant select on all tables in schema public to anon;
+grant select on all tables in schema public to authenticated;
+
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to service_role;
+alter default privileges in schema public
+  grant select on tables to anon, authenticated;
