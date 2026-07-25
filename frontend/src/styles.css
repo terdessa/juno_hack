@@ -68,10 +68,14 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  /* Paired on a contrast axis (serif vs grotesque), not two geometric
-     sans-serifs. The serif is reserved for patient names and page titles. */
+  /*
+   * One family, many weights. A display serif on patient names read as
+   * warmth on a mock-up and as inconsistency in a tool someone opens forty
+   * times a day — a label is a label. Hierarchy comes from weight, size and
+   * spacing instead, which is what dense product surfaces want.
+   */
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Newsreader", ui-serif, Georgia, serif;
+  --font-display: var(--font-sans);
 
   /*
    * Three named body sizes on a ~1.125 ratio, replacing the eyeballed
@@ -141,17 +145,27 @@
      structure, not controls, and darkening them turns the lists into a grid. */
   --input: oklch(0.68 0 0);
   --ring: oklch(0.21 0 0);
-  --sidebar: oklch(0.975 0 0);
+  --sidebar: oklch(0.958 0.003 250);
   --sidebar-foreground: oklch(0.27 0 0);
   --sidebar-primary: oklch(0.21 0 0);
   --sidebar-primary-foreground: oklch(0.99 0 0);
   --sidebar-accent: oklch(0.94 0 0);
   --sidebar-accent-foreground: oklch(0.24 0 0);
-  --sidebar-border: oklch(0.915 0 0);
+  --sidebar-border: oklch(0.902 0.004 250);
   --sidebar-ring: oklch(0.21 0 0);
 
   --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.04), 0 2px 8px oklch(0 0 0 / 0.04);
   --shadow-float: 0 12px 40px oklch(0 0 0 / 0.12), 0 2px 8px oklch(0 0 0 / 0.06);
+
+  /*
+   * Named stacking order. Arbitrary z-50s are how two things end up fighting
+   * over the same layer and nobody can say which should win.
+   */
+  --z-rail: 20;
+  --z-sticky: 30;
+  --z-peek: 40;
+  --z-backdrop: 50;
+  --z-palette: 60;
 }
 
 .dark {
@@ -192,13 +206,13 @@
   --border: oklch(0.29 0 0);
   --input: oklch(0.48 0 0);
   --ring: oklch(0.85 0 0);
-  --sidebar: oklch(0.19 0 0);
+  --sidebar: oklch(0.148 0.004 250);
   --sidebar-foreground: oklch(0.9 0 0);
   --sidebar-primary: oklch(0.96 0 0);
   --sidebar-primary-foreground: oklch(0.19 0 0);
   --sidebar-accent: oklch(0.27 0 0);
   --sidebar-accent-foreground: oklch(0.96 0 0);
-  --sidebar-border: oklch(0.28 0 0);
+  --sidebar-border: oklch(0.26 0.005 250);
   --sidebar-ring: oklch(0.85 0 0);
 
   --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.4), 0 2px 8px oklch(0 0 0 / 0.4);
@@ -217,10 +231,15 @@
     -webkit-font-smoothing: antialiased;
   }
   h1, h2, h3, h4 {
-    font-family: var(--font-display);
-    letter-spacing: -0.015em;
-    font-weight: 500;
+    font-family: var(--font-sans);
+    letter-spacing: -0.02em;
+    font-weight: 600;
     text-wrap: balance;
+  }
+  /* Times, durations and readings sit in columns; proportional digits make
+     them jitter as they update. */
+  time, [data-numeric] {
+    font-variant-numeric: tabular-nums;
   }
   p {
     text-wrap: pretty;
@@ -235,6 +254,44 @@
   :focus-visible {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
+  }
+
+  /* The pressed state, once, for everything that can be pressed. A control
+     that highlights on hover and then does nothing under the finger feels
+     dead on the tap — and on a touchscreen hover never happens at all, so
+     this is the only feedback that half the interactions get. */
+  button:not(:disabled):active,
+  a[href]:active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    transform: scale(0.985);
+  }
+  button,
+  a[href],
+  [role="button"] {
+    transition:
+      transform 120ms cubic-bezier(0.16, 1, 0.3, 1),
+      background-color 150ms ease-out,
+      color 150ms ease-out,
+      border-color 150ms ease-out,
+      opacity 150ms ease-out;
+  }
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    button:not(:disabled):active,
+    a[href]:active,
+    [role="button"]:not([aria-disabled="true"]):active {
+      transform: none;
+    }
+    button,
+    a[href],
+    [role="button"] {
+      transition-duration: 1ms;
+    }
   }
 }
 

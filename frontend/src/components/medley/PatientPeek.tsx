@@ -57,7 +57,7 @@ export function PatientPeek({ patient, children }: { patient: Patient; children:
           className="pointer-events-none fixed z-50 hidden w-76 rounded-xl border border-border bg-popover p-4 shadow-float lg:block"
           style={{ top: at.top, left: at.left }}
         >
-          <div className="font-display text-lg leading-tight">{patient.name}</div>
+          <div className="font-medium text-lg leading-tight">{patient.name}</div>
           <div className="mt-0.5 text-sm text-muted-foreground">
             {patient.age} · NHS {patient.nhsNumber}
           </div>

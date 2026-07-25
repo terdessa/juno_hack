@@ -29,7 +29,7 @@ function PatientsPage() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <h1 className="font-display text-3xl tracking-tight">Patients</h1>
+        <h1 className="text-2xl tracking-tight">Patients</h1>
         <div className="relative w-full sm:w-auto">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -76,7 +76,7 @@ function PatientsPage() {
                 className="flex items-center gap-4 py-4 transition-colors hover:bg-secondary/40"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="font-display text-reading leading-snug">{p.name}</div>
+                  <div className="font-medium text-reading leading-snug">{p.name}</div>
                   <div className="truncate text-sm text-muted-foreground">{p.condition}</div>
                 </div>
                 <div className="hidden shrink-0 text-right text-sm text-muted-foreground sm:block">

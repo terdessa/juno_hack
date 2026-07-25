@@ -271,7 +271,7 @@ export function AgentHome({ onAction }: { onAction: (a: UiAction) => void }) {
   return (
     <div className="flex min-h-[calc(100vh-8rem)] flex-col">
       <div className="flex flex-1 flex-col items-center justify-center py-8">
-        <h1 className="text-center font-display text-4xl leading-[1.05] tracking-tight sm:text-5xl">
+        <h1 className="text-center text-[28px] leading-[1.1] tracking-tight sm:text-[34px]">
           What do you need?
         </h1>
         <p className="mt-4 max-w-md text-center text-body text-muted-foreground">
@@ -322,7 +322,7 @@ export function AgentHome({ onAction }: { onAction: (a: UiAction) => void }) {
                   <span className="w-14 shrink-0 text-sm tabular-nums text-muted-foreground">
                     {formatTime(t.scheduledAt)}
                   </span>
-                  <span className="font-display text-body">
+                  <span className="font-medium text-body">
                     {patientById(t.patientId)?.name ?? "—"}
                   </span>
                   <span className="truncate text-sm text-muted-foreground">{t.purpose}</span>

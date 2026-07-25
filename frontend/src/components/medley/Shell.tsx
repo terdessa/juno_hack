@@ -1,7 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { MessageSquare, ListChecks, Users, CalendarDays, RotateCw } from "lucide-react";
+import { MessageSquare, ListChecks, Users, CalendarDays, RotateCw, Command } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useMedleyStoreOptional } from "@/lib/medley-context";
+import { Mark } from "./Mark";
+import { CommandPalette } from "./CommandPalette";
 
 const NAV = [
   { to: "/", label: "Medley", icon: MessageSquare },
@@ -11,19 +13,21 @@ const NAV = [
 ] as const;
 
 /**
- * One nav, four places, large targets. A doctor reads this between patients,
- * so labels stay visible rather than hiding behind icons.
+ * A persistent rail on its own surface, one shade down and a hair cool from
+ * the content behind it. Two planes rather than one flat page is what stops a
+ * tool reading as a document — and it gives the eye a fixed place to start,
+ * which matters when the reader is between patients.
  *
- * Two things live here rather than on any single page, because both must be
- * true everywhere: a call in progress, and a list that failed to load. An
- * empty list that silently means "the database is down" is the one failure
- * this product cannot afford.
+ * Two things live here rather than on any page, because both must be true
+ * everywhere: a call in progress, and a list that failed to load. An empty
+ * list that silently means "the database is down" is the one failure this
+ * product cannot afford.
  */
 export function Shell({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
-  // Optional: the nav must render even if this is mounted without the data
-  // provider. The strip and the banner are decoration on top of the data, not
-  // a reason to take the whole app down.
+  // Optional: the nav must render even without the data provider. The live
+  // strip and the banner are decoration on top of the data, not a reason to
+  // take the whole app down.
   const store = useMedleyStoreOptional();
   const [retrying, setRetrying] = useState(false);
 
@@ -42,81 +46,102 @@ export function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-[1240px] items-center gap-1 px-4 sm:px-6">
-          <Link to="/" className="mr-4 flex shrink-0 items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
-              M
-            </span>
-            <span className="font-display text-xl tracking-tight">Medley</span>
-          </Link>
+      {/* Rail. Horizontal strip under the header on small screens, where a
+          220px column would eat half the width. */}
+      <aside
+        style={{ zIndex: "var(--z-rail)" }}
+        className="fixed inset-x-0 top-0 flex h-14 items-center gap-1 border-b border-sidebar-border bg-sidebar px-3
+                   md:inset-y-0 md:right-auto md:h-auto md:w-[228px] md:flex-col md:items-stretch md:gap-0 md:border-b-0 md:border-r md:px-3 md:py-4"
+      >
+        <Link
+          to="/"
+          className="mr-3 flex shrink-0 items-center gap-2.5 rounded-lg px-2 py-1.5 md:mr-0 md:mb-6"
+        >
+          <Mark className="h-[18px] w-[18px] text-foreground" />
+          <span className="text-[15px] font-semibold tracking-tight">Medley</span>
+        </Link>
 
-          <nav className="flex items-center gap-1">
-            {NAV.map(({ to, label, icon: Icon }) => {
-              // "/" would prefix-match everything, so home is matched exactly.
-              const active = to === "/" ? path === "/" : path.startsWith(to);
-              return (
-                <Link
-                  key={to}
-                  to={to}
-                  aria-current={active ? "page" : undefined}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors max-sm:min-h-11 sm:px-3.5 ${
-                    active
-                      ? "bg-secondary text-foreground"
-                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" aria-hidden />
-                  <span className={to === "/" ? "sr-only sm:not-sr-only" : ""}>{label}</span>
-                </Link>
-              );
-            })}
-          </nav>
+        <nav className="flex items-center gap-1 md:flex-col md:items-stretch md:gap-0.5">
+          {NAV.map(({ to, label, icon: Icon }) => {
+            // "/" would prefix-match everything, so home is matched exactly.
+            const active = to === "/" ? path === "/" : path.startsWith(to);
+            return (
+              <Link
+                key={to}
+                to={to}
+                aria-current={active ? "page" : undefined}
+                className={`group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-body font-medium transition-colors duration-150 max-md:min-h-10 ${
+                  active
+                    ? "bg-card text-foreground shadow-soft"
+                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                }`}
+              >
+                <Icon
+                  className={`h-4 w-4 shrink-0 transition-colors ${active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"}`}
+                  aria-hidden
+                />
+                <span className={to === "/" ? "sr-only md:not-sr-only" : ""}>{label}</span>
+              </Link>
+            );
+          })}
+        </nav>
 
-          <div className="ml-auto hidden text-right sm:block">
-            <div className="text-sm font-medium leading-tight">Dr Hartley</div>
-            <div className="text-xs text-muted-foreground">Elm Surgery</div>
+        {/* Pinned to the bottom of the rail on desktop: identity last, the way
+            every tool the doctor already uses does it. */}
+        <div className="ml-auto flex items-center gap-2 md:ml-0 md:mt-auto md:flex-col md:items-stretch md:gap-3">
+          <div className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-micro text-muted-foreground md:flex">
+            <Command className="h-3 w-3" aria-hidden />
+            <span>K to ask Medley</span>
+          </div>
+          <div className="rounded-lg px-2.5 py-1.5 text-right md:bg-sidebar-accent/60 md:text-left">
+            <div className="text-micro font-medium leading-tight text-foreground">Dr Hartley</div>
+            <div className="text-micro leading-tight text-muted-foreground">Elm Surgery</div>
           </div>
         </div>
+      </aside>
 
+      <div className="pt-14 md:pl-[228px] md:pt-0">
         {live && (
           <Link
             to="/calls/$taskId"
             params={{ taskId: live.id }}
-            className="flex items-center gap-3 border-t border-border bg-live-surface px-4 py-2.5 transition-opacity hover:opacity-85 sm:px-6"
+            style={{ zIndex: "var(--z-sticky)" }}
+            className="sticky top-14 flex items-center gap-3 border-b border-border bg-live-surface px-5 py-2.5 transition-opacity hover:opacity-85 md:top-0"
           >
-            <span className="pulse-dot ml-0.5 inline-block h-2 w-2 shrink-0 rounded-full bg-live text-live" />
-            <span className="text-sm font-medium text-live">On a call now</span>
-            <span className="truncate text-sm text-foreground">
+            <span className="pulse-dot ml-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-live text-live" />
+            <span className="text-micro font-medium text-live">On a call now</span>
+            <span className="truncate text-micro text-foreground">
               {store?.patientById(live.patientId)?.name ?? "Patient"} · {live.purpose}
             </span>
           </Link>
         )}
-      </header>
 
-      {error && (
-        <div role="alert" className="border-b border-border bg-flag-surface">
-          <div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-6">
-            <p className="text-sm text-flag">
-              Today's list didn't load, so anything below may be out of date.
-            </p>
-            <button
-              type="button"
-              onClick={() => void retry()}
-              disabled={retrying}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-60"
-            >
-              <RotateCw
-                className={`h-3.5 w-3.5 ${retrying ? "animate-spin motion-reduce:animate-none" : ""}`}
-                aria-hidden
-              />
-              {retrying ? "Retrying…" : "Try again"}
-            </button>
+        {error && (
+          <div role="alert" className="border-b border-border bg-flag-surface">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
+              <p className="text-micro text-flag">
+                Today's list didn't load, so anything below may be out of date.
+              </p>
+              <button
+                type="button"
+                onClick={() => void retry()}
+                disabled={retrying}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-card px-2.5 py-1.5 text-micro font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-60"
+              >
+                <RotateCw
+                  className={`h-3 w-3 ${retrying ? "animate-spin motion-reduce:animate-none" : ""}`}
+                  aria-hidden
+                />
+                {retrying ? "Retrying…" : "Try again"}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <main className="mx-auto max-w-[1240px] px-4 py-8 sm:px-6">{children}</main>
+        <main className="mx-auto max-w-[980px] px-5 py-8 sm:px-8">{children}</main>
+      </div>
+
+      <CommandPalette />
     </div>
   );
 }

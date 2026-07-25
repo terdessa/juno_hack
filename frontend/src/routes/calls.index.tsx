@@ -30,7 +30,7 @@ function CallsPage() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <h1 className="font-display text-3xl tracking-tight">Calls</h1>
+        <h1 className="text-2xl tracking-tight">Calls</h1>
         <div role="group" aria-label="Filter calls by status" className="flex flex-wrap gap-1.5">
           {FILTERS.map((f) => (
             <button
@@ -85,7 +85,7 @@ function CallsPage() {
                 <StatusDot status={t.status} described={false} />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline gap-x-2">
-                    <span className="font-display text-reading leading-snug">
+                    <span className="font-medium text-reading leading-snug">
                       {p?.name ?? "Unknown patient"}
                     </span>
                     {/* The dot alone carried status in colour only, which is

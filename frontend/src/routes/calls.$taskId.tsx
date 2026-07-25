@@ -84,7 +84,7 @@ function CallPage() {
         {task.mood && <MoodBadge mood={task.mood} />}
       </div>
 
-      <h1 className="mt-3 font-display text-3xl leading-tight tracking-tight">{task.purpose}</h1>
+      <h1 className="mt-3 text-2xl leading-tight tracking-tight">{task.purpose}</h1>
 
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
         {patient && (
@@ -162,13 +162,13 @@ function CallPage() {
 
       {task.summary && (
         <section className="mt-10">
-          <h2 className="font-display text-lg tracking-tight">What happened</h2>
+          <h2 className="text-lg tracking-tight">What happened</h2>
           <p className="mt-2 max-w-[68ch] text-body leading-relaxed">{task.summary}</p>
         </section>
       )}
 
       <section className="mt-10">
-        <h2 className="font-display text-lg tracking-tight">
+        <h2 className="text-lg tracking-tight">
           {task.status === "completed" ? "What was asked" : "What Medley will ask"}
         </h2>
         <ol className="mt-3 space-y-2.5">
@@ -183,7 +183,7 @@ function CallPage() {
 
       {task.transcript && task.transcript.length > 0 && (
         <section className="mt-10">
-          <h2 className="font-display text-lg tracking-tight">Transcript</h2>
+          <h2 className="text-lg tracking-tight">Transcript</h2>
           <div className="mt-3 space-y-3">
             {task.transcript.map((turn, i) => (
               <div key={i} className="text-body">

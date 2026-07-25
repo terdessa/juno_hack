@@ -57,7 +57,7 @@ function PatientPage() {
       </Link>
 
       <header className="border-b border-border pb-6">
-        <h1 className="font-display text-3xl leading-tight tracking-tight">{p.name}</h1>
+        <h1 className="text-2xl leading-tight tracking-tight">{p.name}</h1>
         <p className="mt-2 text-body text-muted-foreground">
           {p.age} · NHS {p.nhsNumber} · last seen {formatRelative(p.lastVisit)}
         </p>
@@ -68,14 +68,14 @@ function PatientPage() {
         <div>
           {p.notes && (
             <section>
-              <h2 className="font-display text-lg tracking-tight">Notes</h2>
+              <h2 className="text-lg tracking-tight">Notes</h2>
               <p className="mt-2 max-w-[68ch] text-body leading-relaxed">{p.notes}</p>
             </section>
           )}
 
           {p.medications.length > 0 && (
             <section className="mt-8">
-              <h2 className="font-display text-lg tracking-tight">Medications</h2>
+              <h2 className="text-lg tracking-tight">Medications</h2>
               <ul className="mt-2 space-y-1">
                 {p.medications.map((m) => (
                   <li key={m} className="text-body">
@@ -88,7 +88,7 @@ function PatientPage() {
 
           {p.vaccinations.length > 0 && (
             <section className="mt-8">
-              <h2 className="font-display text-lg tracking-tight">Vaccinations</h2>
+              <h2 className="text-lg tracking-tight">Vaccinations</h2>
               <ul className="mt-2 flex flex-wrap gap-1.5">
                 {p.vaccinations.map((v) => (
                   <li
@@ -103,7 +103,7 @@ function PatientPage() {
           )}
 
           <section className="mt-8">
-            <h2 className="font-display text-lg tracking-tight">Follow-up calls</h2>
+            <h2 className="text-lg tracking-tight">Follow-up calls</h2>
             {history.length === 0 ? (
               <p className="mt-2 text-body text-muted-foreground">
                 None yet.{" "}
@@ -138,7 +138,7 @@ function PatientPage() {
         </div>
 
         <aside>
-          <h2 className="font-display text-lg tracking-tight">Contact</h2>
+          <h2 className="text-lg tracking-tight">Contact</h2>
           <dl className="mt-1 divide-y divide-border">
             <Field label="Mobile" value={p.phone} />
             <Field label="Alternative" value={p.altPhone} />
