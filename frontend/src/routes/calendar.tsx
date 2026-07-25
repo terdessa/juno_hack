@@ -7,7 +7,7 @@ import { Shell } from "@/components/medley/Shell";
 import { StatusDot } from "@/components/medley/status";
 import { WeekGrid, type WeekDay } from "@/components/medley/WeekGrid";
 import { deleteAppointment } from "@/lib/medley-api";
-import { formatTime } from "@/lib/format";
+import { dayKey, formatTime } from "@/lib/format";
 import type { Appointment, CallTask } from "@/lib/types";
 
 export const Route = createFileRoute("/calendar")({
@@ -35,18 +35,24 @@ function addDays(d: Date, n: number) {
   return copy;
 }
 
-/** Spreads dated things across the seven days of a week. */
+/**
+ * Spreads dated things across the seven days of a week.
+ *
+ * Bucketed by the practice's clock, not the browser's. `toDateString()` uses
+ * the machine's zone, which drops a 00:30 London appointment into the previous
+ * column for anyone running UTC — the wrong day, silently.
+ */
 function spread<T>(weekStart: Date, items: T[], dateOf: (item: T) => string): WeekDay<T>[] {
   // Resolved here so "today" can't go stale against a render from before midnight.
-  const todayKey = new Date().toDateString();
+  const todayKey = dayKey(new Date());
   return Array.from({ length: 7 }, (_, i) => {
     const date = addDays(weekStart, i);
-    const key = date.toDateString();
+    const key = dayKey(date);
     return {
       date,
       isToday: key === todayKey,
       items: items
-        .filter((item) => new Date(dateOf(item)).toDateString() === key)
+        .filter((item) => dayKey(dateOf(item)) === key)
         .sort((a, b) => dateOf(a).localeCompare(dateOf(b))),
     };
   });
