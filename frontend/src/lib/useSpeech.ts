@@ -59,6 +59,8 @@ interface SpeechOptions {
 
 export function useSpeech({ onTranscript, onPartial, onSilence, onError }: SpeechOptions) {
   const [listening, setListening] = useState(false);
+  /** 0–1, for the level meter. Silence on screen is indistinguishable from a dead microphone. */
+  const [level, setLevel] = useState(0);
   // Only ever true in upload mode: native recognition has no gap between the
   // doctor finishing and the words arriving.
   const [transcribing, setTranscribing] = useState(false);
@@ -67,6 +69,8 @@ export function useSpeech({ onTranscript, onPartial, onSilence, onError }: Speec
   // — a false negative on the primary control.
   const [supported, setSupported] = useState<boolean | null>(null);
   const recognition = useRef<SpeechRecognitionLike | null>(null);
+  /** Upload mode only: runs for on-screen words, never for the transcript. */
+  const preview = useRef<SpeechRecognitionLike | null>(null);
   const mode = useRef<"native" | "upload" | null>(null);
   const recording = useRef<Recording | null>(null);
   // Mirrors `listening` for the callbacks, which would otherwise close over a
@@ -91,12 +95,43 @@ export function useSpeech({ onTranscript, onPartial, onSilence, onError }: Speec
     // what gets said to this thing. It also ends the turn the moment it thinks
     // a sentence finished, so pausing to think hangs up on you. A second of
     // upload buys a model that does neither.
+    //
+    // Where a browser recogniser also exists it is still started, but only as
+    // a teleprompter: its words appear while the doctor talks and are then
+    // thrown away, and Scribe's transcript is the one that gets sent. Watching
+    // nothing happen for two seconds is what made this feel broken, and it is
+    // a display problem, not an accuracy one.
     if (canRecord()) {
       mode.current = "upload";
       setSupported(true);
+      const Preview = recognitionCtor();
+      if (Preview) {
+        const p = new Preview();
+        p.lang = "en-GB";
+        p.continuous = true;
+        p.interimResults = true;
+        p.onresult = (e) => {
+          let text = "";
+          for (let i = 0; i < e.results.length; i++) text += e.results[i][0]?.transcript ?? "";
+          if (text.trim()) handlers.current.onPartial?.(text.trim());
+        };
+        // It gives up on its own after a pause. We are not listening to it for
+        // the answer, so just start it again for as long as the mic is open.
+        p.onend = () => {
+          if (!isListening.current) return;
+          try {
+            p.start();
+          } catch {
+            // Already running, or the engine is gone. Partials are optional.
+          }
+        };
+        p.onerror = null;
+        preview.current = p;
+      }
       return () => {
         recording.current?.cancel();
         recording.current = null;
+        stopPreview();
       };
     }
 
@@ -164,12 +199,36 @@ export function useSpeech({ onTranscript, onPartial, onSilence, onError }: Speec
     };
   }, [setListeningBoth]);
 
+  const stopPreview = useCallback(() => {
+    const p = preview.current;
+    if (!p) return;
+    const onend = p.onend;
+    p.onend = null; // Stop the restart loop before stopping it.
+    try {
+      p.abort();
+    } catch {
+      // Not running.
+    }
+    p.onend = onend;
+  }, []);
+
   const start = useCallback(() => {
     if (isListening.current) return;
 
     if (mode.current === "upload") {
       setListeningBoth(true);
-      void startRecording()
+      setLevel(0);
+      try {
+        preview.current?.start();
+      } catch {
+        // Already running. Not worth failing the turn over.
+      }
+      void startRecording({
+        onLevel: setLevel,
+        // The doctor stopped talking. Send it rather than making them find a
+        // button — `stop()` is what runs the transcript up to Medley.
+        onEndpoint: () => stopRef.current(),
+      })
         .then((session) => {
           // The permission prompt can outlast the doctor's patience; if they
           // gave up while it was open, don't quietly start recording.
@@ -181,6 +240,7 @@ export function useSpeech({ onTranscript, onPartial, onSilence, onError }: Speec
         })
         .catch(() => {
           setListeningBoth(false);
+          stopPreview();
           handlers.current.onError?.(
             "Microphone access is blocked. Allow it in your browser's address bar.",
           );
@@ -205,6 +265,8 @@ export function useSpeech({ onTranscript, onPartial, onSilence, onError }: Speec
       const session = recording.current;
       recording.current = null;
       setListeningBoth(false);
+      setLevel(0);
+      stopPreview();
       if (!session) return;
       setTranscribing(true);
       void session
@@ -236,12 +298,17 @@ export function useSpeech({ onTranscript, onPartial, onSilence, onError }: Speec
     setListeningBoth(false);
   }, [setListeningBoth]);
 
+  // The endpoint detector fires from an animation frame, outside React, so it
+  // needs a stable handle on the current stop rather than a captured one.
+  const stopRef = useRef(stop);
+  stopRef.current = stop;
+
   const toggle = useCallback(() => {
     if (isListening.current) stop();
     else start();
   }, [start, stop]);
 
-  return { listening, transcribing, supported, start, stop, toggle };
+  return { listening, transcribing, supported, level, start, stop, toggle };
 }
 
 // One voice at a time. `generation` invalidates a reply still being synthesised
@@ -250,6 +317,118 @@ export function useSpeech({ onTranscript, onPartial, onSilence, onError }: Speec
 let playing: HTMLAudioElement | null = null;
 let inFlight: AbortController | null = null;
 let generation = 0;
+
+/**
+ * Speaks a reply that is still being written.
+ *
+ * Medley's answer streams in, so waiting for the last word before sending the
+ * first one to be synthesised throws away most of the head start. This takes
+ * the reply-so-far on every update, speaks each sentence as soon as it is
+ * complete, and synthesises the next one while the current is playing — so the
+ * doctor hears "Done, calling Stas this afternoon" while "…about the ramipril"
+ * is still being generated.
+ *
+ * `onDone` fires once, after the last sentence has finished playing and the
+ * caller has said there is no more text coming. The voice state machine hands
+ * the turn back to the microphone on it, so every path must reach it.
+ */
+export function speakStream(onDone?: () => void) {
+  stopSpeaking();
+  const mine = ++generation;
+
+  const queue: string[] = [];
+  let spokenTo = 0;
+  let ended = false;
+  let draining = false;
+  let finished = false;
+
+  const finish = () => {
+    if (finished || mine !== generation) return;
+    finished = true;
+    onDone?.();
+  };
+
+  const drain = async () => {
+    if (draining) return;
+    draining = true;
+    while (queue.length && mine === generation) {
+      await playChunk(queue.shift()!, mine);
+    }
+    draining = false;
+    if (ended && !queue.length) finish();
+  };
+
+  return {
+    /** The whole reply so far, not the delta. */
+    push(fullText: string) {
+      if (mine !== generation) return;
+      const boundary = lastSentenceEnd(fullText, spokenTo);
+      if (boundary <= spokenTo) return;
+      const chunk = fullText.slice(spokenTo, boundary).trim();
+      spokenTo = boundary;
+      if (chunk) {
+        queue.push(chunk);
+        void drain();
+      }
+    },
+    /** No more text is coming; speak whatever is left and then finish. */
+    end(fullText: string) {
+      if (mine !== generation) return;
+      ended = true;
+      const rest = fullText.slice(spokenTo).trim();
+      spokenTo = fullText.length;
+      if (rest) queue.push(rest);
+      if (queue.length) void drain();
+      else if (!draining) finish();
+    },
+    /** The turn was abandoned — a tool-call preamble, or the doctor cut in. */
+    cancel() {
+      if (mine !== generation) return;
+      queue.length = 0;
+      spokenTo = 0;
+      ended = false;
+    },
+  };
+}
+
+/** End of the last complete sentence at or after `from`, else `from`. */
+export function lastSentenceEnd(text: string, from: number): number {
+  const rest = text.slice(from);
+  let best = 0;
+  // A boundary only counts once something follows it, so "Dr" mid-sentence and
+  // a decimal point don't split the line the moment they are typed.
+  const boundary = /[.!?…](["')\]]*)(\s)/g;
+  for (let m = boundary.exec(rest); m; m = boundary.exec(rest)) {
+    best = m.index + m[0].length;
+  }
+  return from + best;
+}
+
+async function playChunk(text: string, mine: number): Promise<void> {
+  const controller = new AbortController();
+  inFlight = controller;
+  try {
+    const blob = await fetchSpeech(text, controller.signal);
+    if (mine !== generation) return;
+    const audio = new Audio(URL.createObjectURL(blob));
+    playing = audio;
+    await new Promise<void>((resolve) => {
+      audio.onended = () => {
+        URL.revokeObjectURL(audio.src);
+        resolve();
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(audio.src);
+        resolve();
+      };
+      void audio.play().catch(() => resolve());
+    });
+  } catch {
+    if (mine !== generation) return;
+    // ElevenLabs is down or the chunk was refused. The satnav beats silence.
+    await new Promise<void>((resolve) => speakWithBrowser(text, resolve));
+  }
+}
 
 /**
  * Reads Medley's reply aloud, calling back when the voice finishes so the

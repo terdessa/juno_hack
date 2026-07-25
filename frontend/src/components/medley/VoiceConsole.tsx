@@ -1,6 +1,7 @@
 import { Mic, Volume2 } from "lucide-react";
+import type { VoicePhase } from "@/lib/useAgentConversation";
 
-export type VoicePhase = "idle" | "listening" | "thinking" | "speaking";
+export type { VoicePhase };
 
 const COPY: Record<VoicePhase, { status: string; hint: string; action: string }> = {
   idle: {

@@ -1,18 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { talkToAgent, type ChatMessage, type UiAction } from "@/lib/medley-api";
+import { Command } from "lucide-react";
+import type { UiAction } from "@/lib/medley-api";
 import { useMedleyStore } from "@/lib/medley-context";
-import { speak, stopSpeaking, useSpeech } from "@/lib/useSpeech";
-import {
-  clearConversation,
-  getConversation,
-  setConversation,
-  useConversation,
-} from "@/lib/conversation";
+import { clearConversation } from "@/lib/conversation";
+import { useAgentConversation } from "@/lib/useAgentConversation";
+import { useDockOpen, openDock } from "@/lib/dock";
 import { formatTime } from "@/lib/format";
 import { ModeSwitch, type TalkMode } from "./ModeSwitch";
 import { TextComposer } from "./TextComposer";
-import { VoiceConsole, type VoicePhase } from "./VoiceConsole";
+import { VoiceConsole } from "./VoiceConsole";
 
 const PROMPTS = [
   "Ring John tomorrow — forgot to ask how the new tablets are treating him",
@@ -37,146 +34,32 @@ function prefersReducedMotion() {
 export function AgentHome({ onAction }: { onAction: (a: UiAction) => void }) {
   const { tasks, patientById, reload } = useMedleyStore();
   const [mode, setMode] = useState<TalkMode>("voice");
-  const messages = useConversation();
   const [draft, setDraft] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [phase, setPhase] = useState<VoicePhase>("idle");
-  const [partial, setPartial] = useState("");
-  const [micError, setMicError] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
 
-  // Refs mirror state that the speech callbacks read. They fire outside React's
-  // render cycle, so a closure over state would be one turn behind.
-  const busyRef = useRef(false);
-  const phaseRef = useRef<VoicePhase>("idle");
-  const conversing = useRef(false);
-  const sendRef = useRef<(text: string, spoken: boolean) => void>(() => {});
+  // The dock is the same conversation in a floating window. Only one surface
+  // may hold the microphone, and when the dock is open it is the one holding
+  // it — so this one stands down rather than opening a second.
+  const dockOpen = useDockOpen();
+
+  const {
+    messages,
+    streaming,
+    busy,
+    phase,
+    partial,
+    micError,
+    supported,
+    transcribing,
+    send,
+    toggleVoice,
+    reset,
+  } = useAgentConversation({ onAction, reload, enabled: !dockOpen });
 
   const started = messages.length > 0;
 
-  const toPhase = useCallback((next: VoicePhase) => {
-    phaseRef.current = next;
-    setPhase(next);
-  }, []);
-
-  const { supported, transcribing, start, stop } = useSpeech({
-    onTranscript: (text) => {
-      setPartial("");
-      sendRef.current(text, true);
-    },
-    onPartial: setPartial,
-    onSilence: () => {
-      // Heard nothing. Say so and hand control back rather than reopening the
-      // microphone forever.
-      conversing.current = false;
-      toPhase("idle");
-      setPartial("");
-      setMicError("I didn't catch that. Tap the microphone and try again.");
-    },
-    onError: (reason) => {
-      conversing.current = false;
-      toPhase("idle");
-      setPartial("");
-      setMicError(reason);
-    },
-  });
-
-  useEffect(() => {
-    scroller.current?.scrollTo({
-      top: scroller.current.scrollHeight,
-      behavior: prefersReducedMotion() ? "auto" : "smooth",
-    });
-  }, [messages, busy]);
-
-  // Never leave a voice speaking or a microphone open behind us.
-  useEffect(
-    () => () => {
-      stopSpeaking();
-    },
-    [],
-  );
-
-  const send = useCallback(
-    async (text: string, spoken: boolean) => {
-      const trimmed = text.trim();
-      if (!trimmed || busyRef.current) return;
-
-      const next: ChatMessage[] = [...getConversation(), { role: "user", content: trimmed }];
-      setConversation(next);
-      setDraft("");
-      setMicError(null);
-      busyRef.current = true;
-      setBusy(true);
-      if (spoken) toPhase("thinking");
-
-      try {
-        const result = await talkToAgent(next, {});
-        setConversation([...next, { role: "assistant", content: result.reply }]);
-        result.actions.forEach(onAction);
-        void reload();
-
-        if (spoken) {
-          toPhase("speaking");
-          speak(result.reply, () => {
-            // The doctor may have cut in or switched to typing while Medley was
-            // still talking; in both cases the phase has already moved on.
-            if (phaseRef.current !== "speaking") return;
-            if (!conversing.current) {
-              toPhase("idle");
-              return;
-            }
-            toPhase("listening");
-            start();
-          });
-        }
-      } catch (err) {
-        const message =
-          err instanceof Error
-            ? `I couldn't reach the practice system: ${err.message}`
-            : "I couldn't reach the practice system. Nothing was saved.";
-        setConversation([...next, { role: "assistant", content: message }]);
-        if (spoken) {
-          conversing.current = false;
-          toPhase("idle");
-        }
-      } finally {
-        busyRef.current = false;
-        setBusy(false);
-      }
-    },
-    [onAction, reload, start, toPhase],
-  );
-  sendRef.current = send;
-
-  const toggleVoice = () => {
-    setMicError(null);
-    if (phaseRef.current === "listening") {
-      conversing.current = false;
-      stop();
-      setPartial("");
-      toPhase("idle");
-      return;
-    }
-    if (phaseRef.current === "speaking") {
-      // Barge-in: stop Medley mid-sentence and take the turn.
-      stopSpeaking();
-      conversing.current = true;
-      toPhase("listening");
-      start();
-      return;
-    }
-    conversing.current = true;
-    toPhase("listening");
-    start();
-  };
-
   const startOver = () => {
-    conversing.current = false;
-    stop();
-    stopSpeaking();
-    toPhase("idle");
-    setPartial("");
-    setMicError(null);
+    reset();
     setDraft("");
     clearConversation();
   };
@@ -185,35 +68,41 @@ export function AgentHome({ onAction }: { onAction: (a: UiAction) => void }) {
     if (next === mode) return;
     // Leaving voice means leaving it properly: no microphone still open, no
     // sentence still being read aloud behind a text conversation.
-    conversing.current = false;
-    stop();
-    stopSpeaking();
-    toPhase("idle");
-    setPartial("");
-    setMicError(null);
+    reset();
     setMode(next);
   };
 
-  const talkSurface =
-    mode === "voice" ? (
-      <VoiceConsole
-        phase={phase}
-        partial={partial}
-        supported={supported}
-        transcribing={transcribing}
-        error={micError}
-        onToggle={toggleVoice}
-        onUseText={() => changeMode("text")}
-      />
-    ) : (
-      <TextComposer
-        value={draft}
-        onChange={setDraft}
-        onSubmit={() => void send(draft, false)}
-        busy={busy}
-        autoFocus={started}
-      />
-    );
+  const talkSurface = dockOpen ? (
+    // Medley is in the floating window; two live microphones on one screen is
+    // not a state worth supporting. Say where it went rather than showing a
+    // second console that quietly does nothing.
+    <button
+      type="button"
+      onClick={openDock}
+      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-border px-5 py-6 text-body text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+    >
+      <Command className="h-3.5 w-3.5" aria-hidden />
+      <span>Medley is open in the floating window</span>
+    </button>
+  ) : mode === "voice" ? (
+    <VoiceConsole
+      phase={phase}
+      partial={partial}
+      supported={supported}
+      transcribing={transcribing}
+      error={micError}
+      onToggle={toggleVoice}
+      onUseText={() => changeMode("text")}
+    />
+  ) : (
+    <TextComposer
+      value={draft}
+      onChange={setDraft}
+      onSubmit={() => void send(draft, false)}
+      busy={busy}
+      autoFocus={started}
+    />
+  );
 
   const upNext = tasks.filter((t) => t.status === "queued").slice(0, 3);
 
@@ -247,7 +136,10 @@ export function AgentHome({ onAction }: { onAction: (a: UiAction) => void }) {
               </p>
             </div>
           ))}
-          {busy && (
+          {/* The reply as it is written. Only when nothing has streamed yet is
+              there anything to wait for. */}
+          {streaming && <p className="max-w-[65ch] text-reading">{streaming}</p>}
+          {busy && !streaming && (
             <div
               role="status"
               className="flex items-center gap-2.5 text-body text-muted-foreground"

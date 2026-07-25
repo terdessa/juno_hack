@@ -1,9 +1,11 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { MessageSquare, ListChecks, Users, CalendarDays, RotateCw, Command } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useMedleyStoreOptional } from "@/lib/medley-context";
 import { Mark } from "./Mark";
-import { CommandPalette } from "./CommandPalette";
+import { VoiceDock } from "./VoiceDock";
+import { useDockOpen, toggleDock } from "@/lib/dock";
+import { useAgentActions } from "@/lib/useAgentActions";
 
 const NAV = [
   { to: "/", label: "Medley", icon: MessageSquare },
@@ -30,6 +32,21 @@ export function Shell({ children }: { children: ReactNode }) {
   // take the whole app down.
   const store = useMedleyStoreOptional();
   const [retrying, setRetrying] = useState(false);
+  const dockOpen = useDockOpen();
+  const onAgentAction = useAgentActions();
+
+  // One keystroke to Medley, from anywhere. Not a search box: what the doctor
+  // wants mid-clinic is to say a sentence, not to find a record.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        toggleDock();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const live = store?.tasks.find((t) => t.status === "calling");
   const error = store?.error;
@@ -89,10 +106,19 @@ export function Shell({ children }: { children: ReactNode }) {
         {/* Pinned to the bottom of the rail on desktop: identity last, the way
             every tool the doctor already uses does it. */}
         <div className="ml-auto flex items-center gap-2 md:ml-0 md:mt-auto md:flex-col md:items-stretch md:gap-3">
-          <div className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-micro text-muted-foreground md:flex">
+          <button
+            type="button"
+            onClick={toggleDock}
+            aria-pressed={dockOpen}
+            className={`hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-micro transition-colors md:flex ${
+              dockOpen
+                ? "bg-card text-foreground shadow-soft"
+                : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+            }`}
+          >
             <Command className="h-3 w-3" aria-hidden />
             <span>K to ask Medley</span>
-          </div>
+          </button>
           <div className="rounded-lg px-2.5 py-1.5 text-right md:bg-sidebar-accent/60 md:text-left">
             <div className="text-micro font-medium leading-tight text-foreground">Dr Hartley</div>
             <div className="text-micro leading-tight text-muted-foreground">Elm Surgery</div>
@@ -141,7 +167,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <main className="mx-auto max-w-[980px] px-5 py-8 sm:px-8">{children}</main>
       </div>
 
-      <CommandPalette />
+      {dockOpen && <VoiceDock onAction={onAgentAction} />}
     </div>
   );
 }

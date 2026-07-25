@@ -179,27 +179,128 @@ export interface AgentReply {
  */
 export type AgentView = "calls" | "patients" | "calendar";
 
+/** What the caller is told as the reply is produced. */
+export interface AgentStreamHandlers {
+  /** More of the reply. `text` is the whole reply so far, not the delta. */
+  onText?: (text: string) => void;
+  /** What was streamed turned out to be a preamble to a tool call. Drop it. */
+  onDiscard?: () => void;
+  /** Fires as each action arrives, which is before the reply finishes. */
+  onAction?: (action: UiAction) => void;
+}
+
 /**
  * One turn of conversation with Medley. The whole exchange goes up each time —
  * the function is stateless, the conversation lives in the client.
+ *
+ * The reply streams. Waiting for the complete answer before showing or
+ * speaking a word cost about four seconds of silence on a turn that had to
+ * look something up; now the first sentence is on screen, and out loud, while
+ * the rest is still being written.
  */
 export async function talkToAgent(
   messages: ChatMessage[],
   context: { currentPatientId?: string | null; currentView?: AgentView | null },
+  handlers: AgentStreamHandlers = {},
 ): Promise<AgentReply> {
-  const response = await postFunction("agent", {
-    messages,
-    current_patient_id: context.currentPatientId ?? null,
-    current_view: context.currentView ?? null,
+  const response = await fetch(`${FUNCTIONS_URL}/agent`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${ANON_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messages,
+      current_patient_id: context.currentPatientId ?? null,
+      current_view: context.currentView ?? null,
+    }),
   });
 
-  // The agent answers in prose even when it turns the request down, and it
-  // marks those turns 4xx. A reply is a reply.
-  const body = response.body as Partial<AgentReply> | null;
-  if (body && typeof body.reply === "string") {
-    return { reply: body.reply, actions: body.actions ?? [], detail: body.detail };
+  if (!response.ok || !response.body) {
+    // A rejected turn answers in JSON, not SSE, and still carries prose.
+    const body = (await response.json().catch(() => null)) as Partial<AgentReply> | null;
+    if (body && typeof body.reply === "string") {
+      return { reply: body.reply, actions: body.actions ?? [], detail: body.detail };
+    }
+    throw new Error(`agent failed (${response.status})`);
   }
-  unusable("agent", response);
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const actions: UiAction[] = [];
+  let buffer = "";
+  let text = "";
+  let reply: string | null = null;
+  let failure: string | null = null;
+
+  // SSE frames are separated by a blank line and can be split across reads, so
+  // only whole frames are consumed and the remainder is carried forward.
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const { events, rest } = parseFrames(buffer);
+    buffer = rest;
+
+    for (const event of events) {
+      switch (event.type) {
+        case "text":
+          text += event.text;
+          handlers.onText?.(text);
+          break;
+        case "discard":
+          text = "";
+          handlers.onDiscard?.();
+          break;
+        case "action":
+          actions.push(event.action);
+          handlers.onAction?.(event.action);
+          break;
+        case "done":
+          reply = event.reply;
+          break;
+        case "error":
+          failure = event.message;
+          break;
+      }
+    }
+  }
+
+  if (failure) throw new Error(failure);
+  // `done` carries the authoritative text; falling back to what streamed keeps
+  // a truncated connection from throwing away an answer we already have.
+  const final = reply ?? text.trim();
+  if (!final) throw new Error("The agent closed without answering.");
+  return { reply: final, actions };
+}
+
+export type AgentEvent =
+  | { type: "text"; text: string }
+  | { type: "discard" }
+  | { type: "action"; action: UiAction }
+  | { type: "done"; reply: string }
+  | { type: "error"; message: string };
+
+/**
+ * Pulls whole SSE frames out of the buffer, returning the incomplete tail.
+ *
+ * A network read has nothing to do with a frame boundary: one read can carry
+ * two events, or half of one. Parsing whatever arrived would drop the split
+ * frame's text — a word missing from the middle of the reply, silently.
+ */
+export function parseFrames(buffer: string): { events: AgentEvent[]; rest: string } {
+  const parts = buffer.split("\n\n");
+  const rest = parts.pop() ?? "";
+  const events: AgentEvent[] = [];
+
+  for (const frame of parts) {
+    const line = frame.trim();
+    if (!line.startsWith("data:")) continue;
+    try {
+      events.push(JSON.parse(line.slice(5)) as AgentEvent);
+    } catch {
+      // A malformed frame is not worth losing the rest of the reply over.
+    }
+  }
+  return { events, rest };
 }
 
 export type CopilotResult =
