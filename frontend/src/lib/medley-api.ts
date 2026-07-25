@@ -138,6 +138,10 @@ export async function fetchAppointments(): Promise<Appointment[]> {
     .select(
       "id, patient_id, task_id, start_at, end_at, reason, kind, source, status, invitee_name",
     )
+    // Deleting an event in Google must remove it from the diary here, not
+    // leave a ghost of it. The row is kept for audit; the calendar is a
+    // mirror, and a mirror doesn't accumulate what it used to show.
+    .neq("status", "cancelled")
     .order("start_at", { ascending: true });
   if (error) throw error;
 
@@ -193,6 +197,23 @@ export async function fetchInbox(): Promise<InboxItem[]> {
     status: (row.status ?? "open") as InboxStatus,
     createdAt: row.created_at,
   }));
+}
+
+/**
+ * Removes an appointment from the diary and from Google at the same time.
+ * Server-side: the Google credentials live there, and the anon key can only
+ * read. Fails without changing anything if Google refuses.
+ */
+export async function deleteAppointment(
+  bookingId: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const response = await postFunction("booking-action", {
+    booking_id: bookingId,
+    action: "delete",
+  });
+  const body = response.body as { ok?: boolean; message?: string } | null;
+  if (body?.ok) return { ok: true };
+  return { ok: false, reason: body?.message ?? `That didn't save (${response.status}).` };
 }
 
 /** Clearing an item. Server-side, like every other write — see `taskAction`. */

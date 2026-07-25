@@ -154,6 +154,24 @@ export async function createEvent(event: NewEvent): Promise<string> {
   return body.id;
 }
 
+/**
+ * Removes an event from the doctor's calendar.
+ *
+ * An event that is already gone is a success, not a failure: Google answers
+ * 404 or 410 for one deleted in the browser a moment earlier, and treating
+ * that as an error would leave the row here undeletable.
+ */
+export async function deleteEvent(eventId: string): Promise<void> {
+  const response = await call(
+    `/calendars/${encodeURIComponent(calendarId())}/events/${encodeURIComponent(eventId)}`,
+    { method: "DELETE" },
+  );
+  if (response.ok || response.status === 404 || response.status === 410) return;
+  throw new Error(
+    `Google refused to delete the event (${response.status}): ${(await response.text()).slice(0, 200)}`,
+  );
+}
+
 function requireEnv(name: string): string {
   const value = Deno.env.get(name);
   if (!value) throw new Error(`Missing required env var: ${name}`);

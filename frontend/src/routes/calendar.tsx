@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Phone, User } from "lucide-react";
+import { ChevronLeft, ChevronRight, Phone, User, X } from "lucide-react";
 import { MedleyProvider } from "@/lib/medley-store";
 import { useMedleyStore } from "@/lib/medley-context";
 import { Shell } from "@/components/medley/Shell";
 import { StatusDot } from "@/components/medley/status";
 import { WeekGrid, type WeekDay } from "@/components/medley/WeekGrid";
+import { deleteAppointment } from "@/lib/medley-api";
 import { formatTime } from "@/lib/format";
 import type { Appointment, CallTask } from "@/lib/types";
 
@@ -61,8 +62,23 @@ function spread<T>(weekStart: Date, items: T[], dateOf: (item: T) => string): We
  * row you are looking at.
  */
 function CalendarPage() {
-  const { tasks, appointments, patientById, loading } = useMedleyStore();
+  const { tasks, appointments, patientById, loading, reload } = useMedleyStore();
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Removing an appointment takes it off the doctor's real Google Calendar
+  // too, so it asks first — the same inline confirm the calls list uses.
+  const removeAppointment = async (id: string) => {
+    setPending(id);
+    setError(null);
+    const result = await deleteAppointment(id);
+    if (!result.ok) setError(result.reason ?? "That didn't delete.");
+    setPending(null);
+    setConfirming(null);
+    await reload();
+  };
 
   const callDays = useMemo(
     () => spread(weekStart, tasks, (t) => t.scheduledAt),
@@ -111,6 +127,12 @@ function CalendarPage() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <p role="alert" className="mb-4 rounded-xl bg-flag-surface px-4 py-3 text-sm text-flag">
+          {error}
+        </p>
+      )}
 
       <section aria-labelledby="cal-medley">
         <CalendarHeading
@@ -166,63 +188,87 @@ function CalendarPage() {
           loading={loading}
           emptyLabel="Clear"
           renderItem={(a: Appointment) => {
-            const cancelled = a.status === "cancelled";
             // A Google attendee we couldn't match to a patient still belongs
             // in the diary — under their own name, and without a link into a
             // record that isn't theirs.
             const patient = a.patientId ? patientById(a.patientId) : undefined;
             const who = patient?.name ?? a.inviteeName ?? "Unknown patient";
+            // An appointment we pushed to Google comes back on the next pull,
+            // and Google's summary — "Vlad Shuliar — Blood pressure review" —
+            // overwrites our reason. The name is already the line above, so
+            // showing it twice is just noise from the round trip.
+            const reason = stripName(a.reason, who);
+
+            if (confirming === a.id) {
+              return (
+                <div className="rounded-lg bg-secondary px-2 py-1.5">
+                  <p className="text-xs leading-snug">Remove from both calendars?</p>
+                  <div className="mt-1.5 flex gap-1">
+                    <button
+                      onClick={() => void removeAppointment(a.id)}
+                      disabled={pending === a.id}
+                      className="rounded-md bg-card px-2 py-1 text-xs font-medium shadow-soft disabled:opacity-60"
+                    >
+                      {pending === a.id ? "Removing…" : "Remove"}
+                    </button>
+                    <button
+                      onClick={() => setConfirming(null)}
+                      className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      Keep
+                    </button>
+                  </div>
+                </div>
+              );
+            }
 
             const body = (
               <>
                 <div className="flex items-center gap-1.5">
                   {/* No status dot: an appointment in the diary has no state to
                       report. Colour on this page means a call's condition. */}
-                  <span
-                    className={`text-xs tabular-nums text-muted-foreground ${
-                      cancelled ? "line-through" : ""
-                    }`}
-                  >
+                  <span className="text-xs tabular-nums text-muted-foreground">
                     {formatTime(a.startAt)}
                   </span>
                   {a.kind === "home-visit" && (
                     <span className="text-xs text-muted-foreground">· visit</span>
                   )}
-                  {a.source === "google" && !cancelled && (
-                    <span
-                      title="From your Google Calendar"
-                      className="text-xs text-muted-foreground"
-                      aria-label="From your Google Calendar"
-                    >
+                  {a.source === "google" && (
+                    <span className="text-xs text-muted-foreground" title="From your Google Calendar">
                       · Google
                     </span>
                   )}
                 </div>
-                <div
-                  className={`mt-0.5 truncate text-micro font-medium ${
-                    cancelled ? "text-muted-foreground line-through" : ""
-                  }`}
-                >
-                  {who}
-                </div>
-                {a.reason && (
-                  <div className="truncate text-xs text-muted-foreground">
-                    {cancelled ? "Cancelled" : a.reason}
-                  </div>
+                <div className="mt-0.5 truncate text-micro font-medium">{who}</div>
+                {reason && (
+                  <div className="truncate text-xs text-muted-foreground">{reason}</div>
                 )}
               </>
             );
 
-            return patient ? (
-              <Link
-                to="/patients/$patientId"
-                params={{ patientId: patient.id }}
-                className="block rounded-lg px-2 py-1.5 transition-colors hover:bg-accent max-sm:py-2.5"
-              >
-                {body}
-              </Link>
-            ) : (
-              <div className="rounded-lg px-2 py-1.5">{body}</div>
+            return (
+              <div className="group/appt relative">
+                {patient ? (
+                  <Link
+                    to="/patients/$patientId"
+                    params={{ patientId: patient.id }}
+                    className="block rounded-lg px-2 py-1.5 pr-7 transition-colors hover:bg-accent max-sm:py-2.5"
+                  >
+                    {body}
+                  </Link>
+                ) : (
+                  <div className="rounded-lg px-2 py-1.5 pr-7">{body}</div>
+                )}
+                <button
+                  onClick={() => setConfirming(a.id)}
+                  aria-label={`Remove ${who}'s appointment from both calendars`}
+                  // Quiet until wanted, never hidden: opacity-0 would put it
+                  // out of reach on a touchscreen, which has no hover.
+                  className="absolute right-0.5 top-0.5 rounded-md p-1 text-muted-foreground opacity-50 transition-opacity hover:bg-secondary hover:text-foreground focus-visible:opacity-100 group-hover/appt:opacity-100"
+                >
+                  <X className="h-3 w-3" aria-hidden />
+                </button>
+              </div>
             );
           }}
         />
@@ -244,6 +290,16 @@ function CalendarPage() {
       )}
     </div>
   );
+}
+
+/** Drops a leading "Name — " that a Google round trip added back. */
+function stripName(reason: string | null, who: string): string | null {
+  if (!reason) return null;
+  for (const dash of [" — ", " - "]) {
+    const prefix = `${who}${dash}`;
+    if (reason.startsWith(prefix)) return reason.slice(prefix.length) || null;
+  }
+  return reason;
 }
 
 function CalendarHeading({
