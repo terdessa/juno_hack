@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { PhoneCall, Maximize2, X } from "lucide-react";
-import { initialTasks, patientById } from "@/lib/mock-data";
+import { useMedleyStore } from "@/lib/medley-store";
 import { formatTime } from "@/lib/format";
 
 export function FloatingWidget({ onExpand }: { onExpand: () => void }) {
+  const { tasks, patientById } = useMedleyStore();
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
 
-  const active = initialTasks.find((t) => t.status === "calling");
-  const next = initialTasks.find((t) => t.status === "queued");
+  const active = tasks.find((t) => t.status === "calling");
+  const next = tasks.find((t) => t.status === "queued");
   const patient = active ? patientById(active.patientId) : next ? patientById(next.patientId) : null;
 
   return (

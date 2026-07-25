@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Dashboard } from "@/components/medley/Dashboard";
 import { FloatingWidget } from "@/components/medley/FloatingWidget";
+import { MedleyProvider } from "@/lib/medley-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,10 +26,14 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [minimized, setMinimized] = useState(false);
-  return minimized ? (
-    <MinimizedShell onExpand={() => setMinimized(false)} />
-  ) : (
-    <Dashboard onMinimize={() => setMinimized(true)} />
+  return (
+    <MedleyProvider>
+      {minimized ? (
+        <MinimizedShell onExpand={() => setMinimized(false)} />
+      ) : (
+        <Dashboard onMinimize={() => setMinimized(true)} />
+      )}
+    </MedleyProvider>
   );
 }
 

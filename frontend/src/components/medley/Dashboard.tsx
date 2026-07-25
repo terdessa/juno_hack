@@ -34,7 +34,11 @@ import {
 
 } from "lucide-react";
 
-import { patients, initialTasks, patientById, assignees, assigneeById, type CallTask, type CallTag, type Mood, type Assignee } from "@/lib/mock-data";
+// Roster is static, so it stays a constant. Patients and tasks come from the
+// database via the store.
+import { assignees, assigneeById, type CallTask, type CallTag, type Mood, type Assignee, type Patient } from "@/lib/mock-data";
+import { useMedleyStore } from "@/lib/medley-store";
+import { deleteTask, updateTask as persistTask } from "@/lib/medley-api";
 import { formatTime, formatRelative, formatDate, formatDuration } from "@/lib/format";
 
 type View = "calls" | "patients" | "calendar";
@@ -64,9 +68,14 @@ const tagMeta: Record<CallTag, { label: string; className: string; severity: "wa
 };
 
 export function Dashboard({ onMinimize }: { onMinimize: () => void }) {
-  const [tasks, setTasks] = useState<CallTask[]>(initialTasks);
+  const { tasks, patients, reload } = useMedleyStore();
   const [view, setView] = useState<View>("calls");
-  const [selectedId, setSelectedId] = useState<string | null>(initialTasks[0].id);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Data arrives asynchronously, so select the first task once it lands.
+  useEffect(() => {
+    if (!selectedId && tasks.length) setSelectedId(tasks[0].id);
+  }, [selectedId, tasks]);
   const [newOpen, setNewOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -74,18 +83,20 @@ export function Dashboard({ onMinimize }: { onMinimize: () => void }) {
   const selected = tasks.find((t) => t.id === selectedId) ?? null;
   const editing = tasks.find((t) => t.id === editingId) ?? null;
 
+  // Writes go to the database; realtime brings the change back, so there's no
+  // local copy of the list to keep in sync.
   const addTask = (t: CallTask) => {
-    setTasks((prev) => [t, ...prev]);
     setSelectedId(t.id);
+    void reload();
   };
 
   const updateTask = (id: string, patch: Partial<CallTask>) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    void persistTask(id, patch).then(reload);
   };
 
   const cancelTask = (id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
     setSelectedId((cur) => (cur === id ? null : cur));
+    void deleteTask(id).then(reload);
   };
 
   return (
@@ -149,8 +160,9 @@ function Sidebar({
   setView: (v: View) => void;
   onNewCall: () => void;
 }) {
+  const { tasks, patients } = useMedleyStore();
   const items: { id: View; label: string; icon: typeof Phone; count?: number }[] = [
-    { id: "calls", label: "Calls", icon: ListChecks, count: initialTasks.length },
+    { id: "calls", label: "Calls", icon: ListChecks, count: tasks.length },
     { id: "patients", label: "Patients", icon: Users, count: patients.length },
     { id: "calendar", label: "Calendar", icon: Calendar },
   ];
@@ -208,7 +220,7 @@ function Sidebar({
         <div className="flex items-center justify-between">
           <span>Completed calls</span>
           <span className="font-semibold text-foreground">
-            {initialTasks.filter((t) => t.status === "completed").length}
+            {tasks.filter((t) => t.status === "completed").length}
           </span>
         </div>
         <div className="flex items-center justify-between">
@@ -315,7 +327,9 @@ function CallRow({
   active: boolean;
   onClick: () => void;
 }) {
-  const p = patientById(task.patientId)!;
+  const { patientById } = useMedleyStore();
+  const p = patientById(task.patientId);
+  if (!p) return null;
   const s = statusMeta[task.status];
   const StatusIcon = s.icon;
 
@@ -378,6 +392,7 @@ function CallRow({
 /* ---------------- Patients View ---------------- */
 
 function PatientsView() {
+  const { patients } = useMedleyStore();
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"age" | "recent" | "name">("age");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -549,7 +564,7 @@ function ContactBlock({
   patient,
   className = "",
 }: {
-  patient: (typeof patients)[number];
+  patient: Patient;
   className?: string;
 }) {
   const rows: { icon: typeof Phone; label: string; value: string; primary?: boolean }[] = [
@@ -626,6 +641,7 @@ function sameDay(a: Date, b: Date) {
 }
 
 function CalendarView({ tasks, onSelect, selectedId }: { tasks: CallTask[]; onSelect: (id: string) => void; selectedId: string | null }) {
+  const { patientById } = useMedleyStore();
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const hours = Array.from({ length: 11 }, (_, i) => 8 + i); // 8:00 - 18:00
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -802,7 +818,8 @@ function CalendarView({ tasks, onSelect, selectedId }: { tasks: CallTask[]; onSe
                     }`}
                   >
                     {at.map((t) => {
-                      const p = patientById(t.patientId)!;
+                      const p = patientById(t.patientId);
+                      if (!p) return null;
                       const s = statusMeta[t.status];
                       const dot =
                         s.className.split(" ")[1]?.replace("text-", "bg-") ?? "bg-primary";
@@ -860,7 +877,9 @@ function DetailPanel({
       </div>
     );
   }
-  const p = patientById(task.patientId)!;
+  const { patientById } = useMedleyStore();
+  const p = patientById(task.patientId);
+  if (!p) return null;
   const s = statusMeta[task.status];
   const StatusIcon = s.icon;
   const isQueued = task.status === "queued";
@@ -1073,8 +1092,13 @@ function NewCallDialog({
   onClose: () => void;
   onCreate: (t: CallTask) => void;
 }) {
-  const [patientId, setPatientId] = useState(patients[0].id);
+  const { patients } = useMedleyStore();
+  const [patientId, setPatientId] = useState<string>("");
   const [purpose, setPurpose] = useState("");
+  // Default to the first patient once the list loads.
+  useEffect(() => {
+    if (!patientId && patients.length) setPatientId(patients[0].id);
+  }, [patientId, patients]);
   const [when, setWhen] = useState("now");
   const [voiceMode, setVoiceMode] = useState(false);
   const [assigneeId, setAssigneeId] = useState<string>("medley");
@@ -1333,6 +1357,7 @@ function EditCallDialog({
   onClose: () => void;
   onSave: (patch: Partial<CallTask>) => void;
 }) {
+  const { patients } = useMedleyStore();
   const [purpose, setPurpose] = useState(task.purpose);
   const [patientId, setPatientId] = useState(task.patientId);
   const [assigneeId, setAssigneeId] = useState(task.assigneeId);
