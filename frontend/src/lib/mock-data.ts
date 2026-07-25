@@ -67,6 +67,8 @@ export interface CallTask {
   id: string;
   patientId: string;
   purpose: string;
+  /** What the voice agent asks aloud. Drafted by Medley from the record. */
+  questions?: string[];
   scheduledAt: string; // ISO
   status: CallStatus;
   assigneeId: string;

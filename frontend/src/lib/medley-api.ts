@@ -75,6 +75,7 @@ export function toCallTask(row: TaskWithCall): CallTask {
     patientId: row.patient_id,
     // Fall back to the doctor's own words if the copilot didn't write a title.
     purpose: row.purpose ?? row.instruction_raw,
+    questions: Array.isArray(row.questions) ? asStringArray(row.questions) : [],
     scheduledAt: row.due_at ?? row.created_at,
     status: row.status as CallStatus,
     assigneeId: row.assignee_id ?? "medley",
