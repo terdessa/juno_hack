@@ -9,6 +9,7 @@ import {
   createCallTaskArgs,
   escapeLike,
   getPatientRecordArgs,
+  MAX_PURPOSE_LENGTH,
   MAX_QUESTIONS,
   searchPatientsArgs,
 } from "./tools.ts";
@@ -18,6 +19,7 @@ const VALID_UUID = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
 function validTaskArgs(overrides: Record<string, unknown> = {}) {
   return {
     patient_id: VALID_UUID,
+    purpose: "Check the new blood pressure tablets are being tolerated",
     questions: ["Are the new blood pressure tablets giving you any side effects?"],
     due_at: "2026-07-26T09:00:00+01:00",
     urgency: "normal",
@@ -60,6 +62,20 @@ Deno.test("rejects a date without a timezone offset", () => {
   );
   assertEquals(
     createCallTaskArgs.safeParse(validTaskArgs({ due_at: "2026-07-26 09:00" })).success,
+    false,
+  );
+});
+
+Deno.test("rejects a purpose too long for a dashboard title", () => {
+  // The UI renders this on one line; a paragraph here breaks the layout.
+  assertEquals(
+    createCallTaskArgs.safeParse(
+      validTaskArgs({ purpose: "x".repeat(MAX_PURPOSE_LENGTH + 1) }),
+    ).success,
+    false,
+  );
+  assertEquals(
+    createCallTaskArgs.safeParse(validTaskArgs({ purpose: "" })).success,
     false,
   );
 });

@@ -11,6 +11,10 @@ import { z } from "npm:zod@3";
 
 export const MAX_QUESTIONS = 5;
 export const MAX_QUESTION_LENGTH = 200;
+/** Shown as the task's one-line title on the dashboard. */
+export const MAX_PURPOSE_LENGTH = 120;
+/** The voice agent. Tasks can be reassigned to a colleague from the UI. */
+export const DEFAULT_ASSIGNEE = "medley";
 export const SEARCH_RESULT_LIMIT = 10;
 export const RECENT_HISTORY_LIMIT = 3;
 
@@ -28,6 +32,7 @@ export const getPatientRecordArgs = z.object({
 
 export const createCallTaskArgs = z.object({
   patient_id: z.string().uuid(),
+  purpose: z.string().min(1).max(MAX_PURPOSE_LENGTH),
   questions: z
     .array(z.string().min(1).max(MAX_QUESTION_LENGTH))
     .min(1)
@@ -79,6 +84,13 @@ export const TOOL_DEFINITIONS = [
       type: "object" as const,
       properties: {
         patient_id: { type: "string", description: "Patient UUID" },
+        purpose: {
+          type: "string",
+          description:
+            "One short line naming the point of the call, shown as the task " +
+            "title on the doctor's dashboard. e.g. 'Check new BP medication " +
+            "is being tolerated'. Not a full sentence to the patient.",
+        },
         questions: {
           type: "array",
           items: { type: "string" },
@@ -98,6 +110,7 @@ export const TOOL_DEFINITIONS = [
       },
       required: [
         "patient_id",
+        "purpose",
         "questions",
         "due_at",
         "urgency",
@@ -172,7 +185,9 @@ async function getPatientRecord(
 
   const { data: patient, error } = await db
     .from("patients")
-    .select("id, name, dob, notes, vaccinations, last_seen_at")
+    // Vaccination history never informs a follow-up question, so it stays out
+    // of the prompt. Condition and medications are what questions hang off.
+    .select("id, name, dob, condition, medications, notes, last_seen_at")
     .eq("id", patientId)
     .maybeSingle();
 
@@ -189,7 +204,7 @@ async function getPatientRecord(
       .limit(RECENT_HISTORY_LIMIT),
     db
       .from("calls")
-      .select("extracted_answers, mood_score, ended_at, tasks!inner(patient_id)")
+      .select("summary, extracted_answers, mood, ended_at, tasks!inner(patient_id)")
       .eq("tasks.patient_id", patientId)
       .eq("status", "completed")
       .order("ended_at", { ascending: false })
@@ -233,11 +248,13 @@ async function createCallTask(
     .from("tasks")
     .insert({
       patient_id: args.patient_id,
+      purpose: args.purpose,
       instruction_raw: args.instruction_raw,
       questions: args.questions,
       due_at: args.due_at,
       urgency: args.urgency,
-      status: "pending",
+      status: "queued",
+      assignee_id: DEFAULT_ASSIGNEE,
     })
     .select()
     .single();

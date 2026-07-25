@@ -92,9 +92,9 @@ async function dispatch(
   // which is what stops the patient being called twice.
   const { data: claimed } = await db
     .from("tasks")
-    .update({ status: "in_progress" })
+    .update({ status: "calling" })
     .eq("id", taskId)
-    .eq("status", "pending")
+    .eq("status", "queued")
     .select("id")
     .maybeSingle();
 
@@ -116,8 +116,8 @@ async function dispatch(
     }
   } catch (err) {
     // Release the claim so the doctor can retry, rather than stranding the
-    // task in in_progress with nothing running.
-    await db.from("tasks").update({ status: "pending" }).eq("id", taskId);
+    // task in `calling` with nothing on the line.
+    await db.from("tasks").update({ status: "queued" }).eq("id", taskId);
     throw err;
   }
 

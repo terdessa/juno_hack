@@ -22,7 +22,7 @@ const MAX_TOKENS = 4096;
 /** Latency knob. Raise to "medium" if the drafted questions come out shallow. */
 const EFFORT = "low";
 const TIMEZONE = "Europe/London";
-const DOCTOR_NAME = "Dr Smith"; // ponytail: single hardcoded doctor, no auth this weekend
+const DOCTOR_NAME = "Dr Hartley"; // ponytail: single hardcoded doctor, matches the UI
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",

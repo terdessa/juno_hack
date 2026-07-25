@@ -33,7 +33,13 @@ you write, then report the answers back to the doctor.
    between people.
 2. Look up the patient's record before writing questions. Questions grounded
    in their actual history are the whole point; generic ones are useless.
-3. Write the questions, then create the task.
+3. Write a one-line purpose and the questions, then create the task.
+
+# The purpose line
+This is the task's title on the doctor's dashboard, so write it for the
+doctor, not the patient: what this call is for, in a few words. "Check the
+new blood pressure tablets are being tolerated", not "Hello, I'm calling
+about your medication". No trailing full stop.
 
 # Writing questions
 The questions are read aloud by a voice AI to a patient on the phone. So:
@@ -64,8 +70,8 @@ working hours (09:00 local) unless the doctor gives a time. "in two days",
 timing at all, schedule for the next working hour.
 
 # Finishing
-Call create_call_task exactly once when you have the patient and the
-questions. If you genuinely cannot proceed — ambiguous patient, or an
+Call create_call_task exactly once when you have the patient, the purpose and
+the questions. If you genuinely cannot proceed — ambiguous patient, or an
 instruction that isn't a follow-up task — reply with a single short question
 to the doctor instead. Do not both ask and create.`;
 }
