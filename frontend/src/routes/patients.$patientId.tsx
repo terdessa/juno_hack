@@ -1,8 +1,10 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { MedleyProvider, useMedleyStore } from "@/lib/medley-store";
+import { MedleyProvider } from "@/lib/medley-store";
+import { useMedleyStore } from "@/lib/medley-context";
 import { Shell } from "@/components/medley/Shell";
 import { StatusDot, statusLabel } from "@/components/medley/status";
+import { DetailSkeleton } from "@/components/medley/loading";
 import { formatDate, formatRelative } from "@/lib/format";
 
 export const Route = createFileRoute("/patients/$patientId")({
@@ -21,7 +23,7 @@ function Field({ label, value }: { label: string; value?: string }) {
   return (
     <div className="py-2.5">
       <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 text-[15px]">{value}</dd>
+      <dd className="mt-0.5 text-body">{value}</dd>
     </div>
   );
 }
@@ -31,7 +33,7 @@ function PatientPage() {
   const { patients, tasks, loading } = useMedleyStore();
   const p = patients.find((x) => x.id === patientId);
 
-  if (loading) return <p className="py-24 text-center text-muted-foreground">Loading…</p>;
+  if (loading) return <DetailSkeleton label="Loading patient record" />;
   if (!p) {
     return (
       <p className="py-24 text-center text-muted-foreground">
@@ -55,11 +57,11 @@ function PatientPage() {
       </Link>
 
       <header className="border-b border-border pb-6">
-        <h1 className="font-display text-4xl leading-tight tracking-tight">{p.name}</h1>
-        <p className="mt-2 text-[15px] text-muted-foreground">
+        <h1 className="font-display text-3xl leading-tight tracking-tight">{p.name}</h1>
+        <p className="mt-2 text-body text-muted-foreground">
           {p.age} · NHS {p.nhsNumber} · last seen {formatRelative(p.lastVisit)}
         </p>
-        <p className="mt-3 text-[15px] font-medium">{p.condition}</p>
+        <p className="mt-3 text-body font-medium">{p.condition}</p>
       </header>
 
       <div className="grid gap-10 pt-8 lg:grid-cols-[1fr_20rem]">
@@ -67,7 +69,7 @@ function PatientPage() {
           {p.notes && (
             <section>
               <h2 className="font-display text-lg tracking-tight">Notes</h2>
-              <p className="mt-2 max-w-[68ch] text-[15px] leading-relaxed">{p.notes}</p>
+              <p className="mt-2 max-w-[68ch] text-body leading-relaxed">{p.notes}</p>
             </section>
           )}
 
@@ -76,7 +78,7 @@ function PatientPage() {
               <h2 className="font-display text-lg tracking-tight">Medications</h2>
               <ul className="mt-2 space-y-1">
                 {p.medications.map((m) => (
-                  <li key={m} className="text-[15px]">
+                  <li key={m} className="text-body">
                     {m}
                   </li>
                 ))}
@@ -91,7 +93,7 @@ function PatientPage() {
                 {p.vaccinations.map((v) => (
                   <li
                     key={v}
-                    className="rounded-md bg-secondary px-2.5 py-1 text-[13px] text-muted-foreground"
+                    className="rounded-md bg-secondary px-2.5 py-1 text-micro text-muted-foreground"
                   >
                     {v}
                   </li>
@@ -103,7 +105,7 @@ function PatientPage() {
           <section className="mt-8">
             <h2 className="font-display text-lg tracking-tight">Follow-up calls</h2>
             {history.length === 0 ? (
-              <p className="mt-2 text-[15px] text-muted-foreground">
+              <p className="mt-2 text-body text-muted-foreground">
                 None yet.{" "}
                 <Link to="/" className="text-foreground underline underline-offset-4">
                   Ask Medley to set one up
@@ -119,12 +121,12 @@ function PatientPage() {
                       params={{ taskId: t.id }}
                       className="flex items-center gap-3 py-3 transition-colors hover:bg-secondary/40"
                     >
-                      <StatusDot status={t.status} />
-                      <span className="min-w-0 flex-1 truncate text-[15px]">{t.purpose}</span>
+                      <StatusDot status={t.status} described={false} />
+                      <span className="min-w-0 flex-1 truncate text-body">{t.purpose}</span>
                       <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
                         {formatDate(t.scheduledAt)}
                       </span>
-                      <span className="hidden shrink-0 text-sm text-muted-foreground sm:inline">
+                      <span className="shrink-0 text-micro text-muted-foreground">
                         {statusLabel[t.status]}
                       </span>
                     </Link>

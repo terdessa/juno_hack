@@ -19,10 +19,7 @@ export function useMedley() {
 
   const load = useCallback(async () => {
     try {
-      const [nextPatients, nextTasks] = await Promise.all([
-        fetchPatients(),
-        fetchTasks(),
-      ]);
+      const [nextPatients, nextTasks] = await Promise.all([fetchPatients(), fetchTasks()]);
       setPatients(nextPatients);
       setTasks(nextTasks);
       setError(null);

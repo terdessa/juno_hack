@@ -6,7 +6,8 @@ export function formatTime(iso: string) {
 export function formatRelative(iso: string) {
   const diff = (new Date(iso).getTime() - Date.now()) / 60_000;
   const abs = Math.abs(diff);
-  if (abs < 1) return "now";
+  // "now" read the same for a call about to start and one that just ended.
+  if (abs < 1) return diff > 0 ? "in <1m" : "just now";
   if (abs < 60) return diff > 0 ? `in ${Math.round(abs)}m` : `${Math.round(abs)}m ago`;
   const h = abs / 60;
   if (h < 24) return diff > 0 ? `in ${Math.round(h)}h` : `${Math.round(h)}h ago`;
@@ -23,7 +24,9 @@ export function formatDate(iso: string) {
 }
 
 export function formatDuration(sec?: number) {
-  if (!sec) return "—";
+  // A nought-second call means the patient hung up instantly, which is
+  // clinically interesting. Only a missing value is unknown.
+  if (sec == null) return "—";
   const m = Math.floor(sec / 60);
   const s = sec % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;

@@ -1,0 +1,38 @@
+ElevenLabs Call Agent — handoff to backend
+
+ELEVENLABS_API_KEY: <PASTE NEW SCOPED KEY HERE — do not reuse the old one, rotate first>
+
+agent_id: agent_9601kycv0rkme9ya9wtxt5dkqspg
+agent_phone_number_id: phnum_7501kyd0qfmfe1hrnphvtmjbmraf
+phone_number: +14243533227 (US Twilio number, dials out fine to UK mobiles)
+
+Dynamic variables the agent expects (pass these in
+conversation_initiation_client_data.dynamic_variables when triggering a call):
+  - patient_name  (string, e.g. "John")
+  - questions     (string, plain text list, e.g. "1. How are you finding the
+                   new dose? 2. Any side effects since starting it?")
+
+Outbound call endpoint:
+POST https://api.elevenlabs.io/v1/convai/twilio/outbound-call
+Headers: xi-api-key: <the key above>
+Body:
+{
+  "agent_id": "agent_9601kycv0rkme9ya9wtxt5dkqspg",
+  "agent_phone_number_id": "phnum_7501kyd0qfmfe1hrnphvtmjbmraf",
+  "to_number": "+44XXXXXXXXXX",
+  "conversation_initiation_client_data": {
+    "dynamic_variables": {
+      "patient_name": "John",
+      "questions": "1. ... 2. ..."
+    }
+  }
+}
+
+Status: tested end-to-end against a real UK mobile via a Twilio trial
+account. Trial account plays a disclaimer message first and requires
+pressing any key on the recipient's phone to connect through — not an
+issue once the account is upgraded off trial, but expect it during testing.
+
+Still needed from your side:
+  - Your post-call webhook URL, so I can set it in the agent's webhook
+    settings and you receive the transcript automatically when a call ends.

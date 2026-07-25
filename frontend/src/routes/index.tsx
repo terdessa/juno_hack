@@ -30,7 +30,8 @@ function Home() {
       void navigate({ to: "/calls/$taskId", params: { taskId: action.id } });
     }
     if (action.type === "show_view") {
-      const to = action.id === "patients" ? "/patients" : action.id === "calendar" ? "/calendar" : "/calls";
+      const to =
+        action.id === "patients" ? "/patients" : action.id === "calendar" ? "/calendar" : "/calls";
       void navigate({ to });
     }
   };

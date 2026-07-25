@@ -27,8 +27,15 @@ export interface Patient {
   notes: string;
 }
 
-
-export type AssigneeKind = "doctor" | "nurse" | "pharmacist" | "physio" | "mental-health" | "social" | "admin" | "agent";
+export type AssigneeKind =
+  | "doctor"
+  | "nurse"
+  | "pharmacist"
+  | "physio"
+  | "mental-health"
+  | "social"
+  | "admin"
+  | "agent";
 export interface Assignee {
   id: string;
   name: string;
@@ -41,25 +48,66 @@ export const assignees: Assignee[] = [
   // You & AI
   { id: "me", name: "Dr Hartley", role: "You · GP", kind: "doctor", discipline: "GP" },
   { id: "medley", name: "Medley AI", role: "Voice agent", kind: "agent", discipline: "AI" },
-  { id: "medley-triage", name: "Medley Triage", role: "AI · triage", kind: "agent", discipline: "AI" },
+  {
+    id: "medley-triage",
+    name: "Medley Triage",
+    role: "AI · triage",
+    kind: "agent",
+    discipline: "AI",
+  },
   // Doctors
   { id: "dr-okafor", name: "Dr Okafor", role: "GP colleague", kind: "doctor", discipline: "GP" },
   { id: "dr-chen", name: "Dr Chen", role: "GP registrar", kind: "doctor", discipline: "GP" },
   // Nursing
-  { id: "nurse-shah", name: "Priya Shah", role: "Practice nurse", kind: "nurse", discipline: "Nursing" },
-  { id: "nurse-adeyemi", name: "Tola Adeyemi", role: "District nurse", kind: "nurse", discipline: "Nursing" },
+  {
+    id: "nurse-shah",
+    name: "Priya Shah",
+    role: "Practice nurse",
+    kind: "nurse",
+    discipline: "Nursing",
+  },
+  {
+    id: "nurse-adeyemi",
+    name: "Tola Adeyemi",
+    role: "District nurse",
+    kind: "nurse",
+    discipline: "Nursing",
+  },
   // Pharmacy
-  { id: "pharm-patel", name: "Rohan Patel", role: "Clinical pharmacist", kind: "pharmacist", discipline: "Pharmacy" },
+  {
+    id: "pharm-patel",
+    name: "Rohan Patel",
+    role: "Clinical pharmacist",
+    kind: "pharmacist",
+    discipline: "Pharmacy",
+  },
   // Physiotherapy
-  { id: "physio-novak", name: "Ana Novak", role: "Physiotherapist", kind: "physio", discipline: "Physiotherapy" },
+  {
+    id: "physio-novak",
+    name: "Ana Novak",
+    role: "Physiotherapist",
+    kind: "physio",
+    discipline: "Physiotherapy",
+  },
   // Mental health
-  { id: "mh-oconnor", name: "Sam O'Connor", role: "Mental health practitioner", kind: "mental-health", discipline: "Mental health" },
+  {
+    id: "mh-oconnor",
+    name: "Sam O'Connor",
+    role: "Mental health practitioner",
+    kind: "mental-health",
+    discipline: "Mental health",
+  },
   // Social prescribing
-  { id: "social-diallo", name: "Awa Diallo", role: "Social prescriber", kind: "social", discipline: "Social prescribing" },
+  {
+    id: "social-diallo",
+    name: "Awa Diallo",
+    role: "Social prescriber",
+    kind: "social",
+    discipline: "Social prescribing",
+  },
   // Admin
   { id: "recept-lee", name: "Jamie Lee", role: "Reception", kind: "admin", discipline: "Admin" },
 ];
-
 
 export const assigneeById = (id: string) => assignees.find((a) => a.id === id);
 
@@ -183,25 +231,34 @@ export const patients: Patient[] = [
   },
 ];
 
-
 export const initialTasks: CallTask[] = [
   {
     id: "t1",
     patientId: "p6",
     purpose: "Rebook missed cardiology appointment & check symptoms",
     scheduledAt: new Date(Date.now() - 12 * 60_000).toISOString(),
-    status: "completed", assigneeId: "medley",
+    status: "completed",
+    assigneeId: "medley",
     durationSec: 218,
     mood: "neutral",
     summary:
       "Edward apologised for missing Tuesday. Reports mild ankle swelling but no chest pain. Requested an in-person review. Booked for Weds 30 Jul, 10:20am.",
     followUp: { type: "in-person", suggestedAt: "2026-07-30T10:20:00Z" },
     transcript: [
-      { role: "agent", text: "Hello Edward, this is Medley calling from Dr Hartley's practice. Is now an okay time?" },
+      {
+        role: "agent",
+        text: "Hello Edward, this is Medley calling from Dr Hartley's practice. Is now an okay time?",
+      },
       { role: "patient", text: "Yes, sorry I missed Tuesday, my daughter couldn't drive me." },
-      { role: "agent", text: "No problem at all. How have you been feeling — any chest pain or breathlessness?" },
+      {
+        role: "agent",
+        text: "No problem at all. How have you been feeling — any chest pain or breathlessness?",
+      },
       { role: "patient", text: "No chest pain. My ankles have been a bit puffy though." },
-      { role: "agent", text: "Understood. I'll get that noted and offer you the next available slot with Dr Hartley." },
+      {
+        role: "agent",
+        text: "Understood. I'll get that noted and offer you the next available slot with Dr Hartley.",
+      },
     ],
     tags: ["reschedule-requested", "human-call-requested"],
   },
@@ -210,9 +267,13 @@ export const initialTasks: CallTask[] = [
     patientId: "p3",
     purpose: "Check blood glucose readings & lifestyle review",
     scheduledAt: new Date(Date.now() + 3 * 60_000).toISOString(),
-    status: "calling", assigneeId: "medley",
+    status: "calling",
+    assigneeId: "medley",
     transcript: [
-      { role: "agent", text: "Hello Aisha, this is Medley from the surgery — do you have a moment?" },
+      {
+        role: "agent",
+        text: "Hello Aisha, this is Medley from the surgery — do you have a moment?",
+      },
       { role: "patient", text: "Yes, go ahead." },
     ],
   },
@@ -221,28 +282,34 @@ export const initialTasks: CallTask[] = [
     patientId: "p1",
     purpose: "Post-op recovery check-in (2 weeks)",
     scheduledAt: new Date(Date.now() + 45 * 60_000).toISOString(),
-    status: "queued", assigneeId: "dr-okafor",
+    status: "queued",
+    assigneeId: "dr-okafor",
   },
   {
     id: "t4",
     patientId: "p2",
     purpose: "Migraine diary review before repeat prescription",
     scheduledAt: new Date(Date.now() + 2 * 3600_000).toISOString(),
-    status: "queued", assigneeId: "nurse-shah",
+    status: "queued",
+    assigneeId: "nurse-shah",
   },
   {
     id: "t5",
     patientId: "p4",
     purpose: "Home BP readings & medication tolerance",
     scheduledAt: new Date(Date.now() - 2 * 3600_000).toISOString(),
-    status: "completed", assigneeId: "me",
+    status: "completed",
+    assigneeId: "me",
     durationSec: 164,
     mood: "positive",
     summary:
       "James reports BP averaging 128/82 over past week. No side effects from Ramipril. Happy to continue. No follow-up needed.",
     followUp: { type: "none" },
     transcript: [
-      { role: "agent", text: "Morning James, quick check on your blood pressure readings — how have they been?" },
+      {
+        role: "agent",
+        text: "Morning James, quick check on your blood pressure readings — how have they been?",
+      },
       { role: "patient", text: "Pretty good actually, mostly around 128 over 82." },
       { role: "agent", text: "Excellent. Any dizziness or cough from the Ramipril?" },
       { role: "patient", text: "None at all." },
@@ -253,7 +320,8 @@ export const initialTasks: CallTask[] = [
     patientId: "p5",
     purpose: "Antenatal wellbeing call — 28 week check",
     scheduledAt: new Date(Date.now() - 26 * 3600_000).toISOString(),
-    status: "completed", assigneeId: "medley",
+    status: "completed",
+    assigneeId: "medley",
     durationSec: 302,
     mood: "low",
     summary:
@@ -261,8 +329,14 @@ export const initialTasks: CallTask[] = [
     followUp: { type: "in-person", suggestedAt: "2026-07-28T14:00:00Z" },
     transcript: [
       { role: "agent", text: "Hi Fatima, just checking in on how you're feeling at 28 weeks." },
-      { role: "patient", text: "Honestly, I haven't been sleeping well. I'm quite worried about everything." },
-      { role: "agent", text: "That's really common but let's make sure you have support. I'll flag this for your midwife." },
+      {
+        role: "patient",
+        text: "Honestly, I haven't been sleeping well. I'm quite worried about everything.",
+      },
+      {
+        role: "agent",
+        text: "That's really common but let's make sure you have support. I'll flag this for your midwife.",
+      },
     ],
     tags: ["depression-detected", "anxiety-detected"],
   },

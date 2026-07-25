@@ -72,6 +72,23 @@
      sans-serifs. The serif is reserved for patient names and page titles. */
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Newsreader", ui-serif, Georgia, serif;
+
+  /*
+   * Three named body sizes on a ~1.125 ratio, replacing the eyeballed
+   * text-[13px] / [15px] / [17px] that were scattered through the surface.
+   * Named sizes are greppable; arbitrary ones drift every time someone adds a
+   * component. Tailwind's own scale still handles headings.
+   *
+   * micro   — dense metadata: timestamps, chips, table furniture
+   * body    — the default for interface text
+   * reading — prose the doctor actually reads: summaries, transcripts, replies
+   */
+  --text-micro: 0.8125rem;
+  --text-micro--line-height: 1.45;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.6;
+  --text-reading: 1.0625rem;
+  --text-reading--line-height: 1.65;
 }
 
 :root {
@@ -92,7 +109,7 @@
   --secondary: oklch(0.955 0 0);
   --secondary-foreground: oklch(0.27 0 0);
   --muted: oklch(0.955 0 0);
-  --muted-foreground: oklch(0.47 0 0);   /* 7.4:1 on canvas — AA with room */
+  --muted-foreground: oklch(0.47 0 0);   /* measured 6.5:1 on canvas — AA */
   --accent: oklch(0.94 0 0);
   --accent-foreground: oklch(0.24 0 0);
 
@@ -115,7 +132,14 @@
   --warning-foreground: oklch(0.99 0 0);
 
   --border: oklch(0.915 0 0);
-  --input: oklch(0.89 0 0);
+  /* Inputs carry a darker edge than dividers do. The original 0.89 measured
+     1.39:1 on a white card, so the primary input of the product was effectively
+     invisible; WCAG 1.4.11 wants 3:1 for a boundary that's the only thing
+     identifying a control. This lands at ~3:1 and reads as a deliberate field
+     rather than a hairline.
+     --border stays quiet at 1.23:1 on purpose: dividers between list rows are
+     structure, not controls, and darkening them turns the lists into a grid. */
+  --input: oklch(0.68 0 0);
   --ring: oklch(0.21 0 0);
   --sidebar: oklch(0.975 0 0);
   --sidebar-foreground: oklch(0.27 0 0);
@@ -166,7 +190,7 @@
   --warning-foreground: oklch(0.17 0 0);
 
   --border: oklch(0.29 0 0);
-  --input: oklch(0.32 0 0);
+  --input: oklch(0.48 0 0);
   --ring: oklch(0.85 0 0);
   --sidebar: oklch(0.19 0 0);
   --sidebar-foreground: oklch(0.9 0 0);
@@ -198,6 +222,20 @@
     font-weight: 500;
     text-wrap: balance;
   }
+  p {
+    text-wrap: pretty;
+  }
+
+  /*
+   * One focus indicator for the whole product, defined once. Per-component
+   * focus rings are how a surface ends up with focus visible on four controls
+   * and invisible on the two that matter. --ring is ink in both themes, so
+   * this clears AA against every surface we have.
+   */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
 }
 
 @utility shadow-soft {
@@ -223,4 +261,62 @@
 @keyframes pulse-ring {
   0% { transform: scale(0.6); opacity: 0.5; }
   80%, 100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* A ring leaving the microphone while it's listening. The only thing on the
+   home screen that moves continuously, so it reads as "live" without needing
+   a colour that would collide with clinical state. */
+@utility mic-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1px solid currentColor;
+  opacity: 0;
+  animation: mic-ring 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes mic-ring {
+  0% { transform: scale(1); opacity: 0.45; }
+  100% { transform: scale(1.75); opacity: 0; }
+}
+
+@utility eq-bar {
+  animation: eq-bar 900ms cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes eq-bar {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+
+/*
+ * Reduced motion. Every animation above communicates a state, so each needs a
+ * still equivalent rather than simply being switched off: the ring holds at a
+ * visible opacity, the bars hold at full height. Unlayered, so it wins against
+ * the utilities layer above.
+ */
+/*
+ * 13px metadata is comfortable on a consulting-room monitor and too small on a
+ * phone held at arm's length, so the densest step relaxes to 14px below the
+ * first breakpoint. Unlayered, to beat the utility it overrides.
+ */
+@media (max-width: 39.9375rem) {
+  .text-micro {
+    font-size: 0.875rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot::before {
+    animation: none;
+    opacity: 0.3;
+  }
+  .mic-ring {
+    animation: none;
+    opacity: 0.35;
+  }
+  .eq-bar {
+    animation: none;
+    transform: scaleY(0.7);
+  }
 }

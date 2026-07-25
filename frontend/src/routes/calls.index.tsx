@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { MedleyProvider, useMedleyStore } from "@/lib/medley-store";
+import { MedleyProvider } from "@/lib/medley-store";
+import { useMedleyStore } from "@/lib/medley-context";
 import { Shell } from "@/components/medley/Shell";
 import { StatusDot, statusLabel } from "@/components/medley/status";
+import { ListSkeleton } from "@/components/medley/loading";
 import { formatRelative, formatTime } from "@/lib/format";
 import type { CallTask } from "@/lib/mock-data";
 
@@ -29,12 +31,13 @@ function CallsPage() {
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <h1 className="font-display text-3xl tracking-tight">Calls</h1>
-        <div className="flex flex-wrap gap-1.5">
+        <div role="group" aria-label="Filter calls by status" className="flex flex-wrap gap-1.5">
           {FILTERS.map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
+              aria-pressed={filter === f}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors max-sm:min-h-11 ${
                 filter === f
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -46,16 +49,27 @@ function CallsPage() {
         </div>
       </div>
 
-      {loading && <p className="py-16 text-center text-muted-foreground">Loading…</p>}
+      {loading && <ListSkeleton label="Loading calls" />}
 
       {!loading && shown.length === 0 && (
-        <p className="py-16 text-center text-muted-foreground">
-          Nothing here.{" "}
-          <Link to="/" className="text-foreground underline underline-offset-4">
-            Ask Medley to set up a call
+        <div className="py-16 text-center">
+          <p className="text-body font-medium">
+            {filter === "all"
+              ? "No follow-ups yet"
+              : `Nothing ${statusLabel[filter].toLowerCase()}`}
+          </p>
+          <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
+            {filter === "all"
+              ? "Tell Medley who to ring and why. It reads the record, writes the questions, and phones them."
+              : "Try another filter, or ask Medley to set up a new follow-up."}
+          </p>
+          <Link
+            to="/"
+            className="mt-4 inline-block rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            Ask Medley
           </Link>
-          .
-        </p>
+        </div>
       )}
 
       <ul className="divide-y divide-border">
@@ -68,14 +82,26 @@ function CallsPage() {
                 params={{ taskId: t.id }}
                 className="flex items-center gap-4 py-4 transition-colors hover:bg-secondary/40"
               >
-                <StatusDot status={t.status} />
+                <StatusDot status={t.status} described={false} />
                 <div className="min-w-0 flex-1">
-                  <div className="font-display text-[17px] leading-snug">{p?.name ?? "—"}</div>
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="font-display text-reading leading-snug">
+                      {p?.name ?? "Unknown patient"}
+                    </span>
+                    {/* The dot alone carried status in colour only, which is
+                        invisible to a third of readers and to every mobile
+                        layout that hides the right-hand column. */}
+                    <span className="text-micro text-muted-foreground">
+                      {statusLabel[t.status]}
+                    </span>
+                  </div>
                   <div className="truncate text-sm text-muted-foreground">{t.purpose}</div>
                 </div>
                 <div className="hidden shrink-0 text-right sm:block">
                   <div className="text-sm tabular-nums">{formatTime(t.scheduledAt)}</div>
-                  <div className="text-xs text-muted-foreground">{formatRelative(t.scheduledAt)}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatRelative(t.scheduledAt)}
+                  </div>
                 </div>
               </Link>
             </li>
