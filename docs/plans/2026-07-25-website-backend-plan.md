@@ -59,9 +59,20 @@ data) — flip on later if genuinely needed.
      must call `create_call_task` or ask a clarifying question) — not an
      open-ended agent loop. Bounded turns keep it fast and predictable live
      on stage.
-4. Build the "run now" endpoint (`POST /tasks/:id/run`):
-   - Fires a webhook to n8n (Plan 2's entry point) with the task id.
-   - Marks task `status = in_progress`.
+4. Build the "run now" endpoint (`POST /tasks-run`):
+   - Claims the task conditionally (only if still `pending`) so a double
+     click can't dial the same patient twice.
+   - Calls the ElevenLabs outbound-call API with the agent id from Plan 2,
+     the patient's phone number, and the drafted questions as dynamic
+     variables.
+   - Releases the claim back to `pending` if the call can't be placed,
+     rather than stranding the task in `in_progress`.
+5. Build the post-call receiver (`POST /call-webhook`):
+   - ElevenLabs posts the finished transcript here.
+   - Extract one answer per question asked, plus a mood/sentiment read,
+     via a structured-output call to Claude.
+   - Write the `calls` row and flip the task to `done`. Realtime pushes it
+     to the dashboard with no work on the frontend side.
 5. Wire the scraped Lovable frontend to Supabase client (read `patients`,
    `tasks`, `calls`, subscribe to realtime) and to the two endpoints above.
 6. End-to-end check: type an instruction in the copilot box → task appears

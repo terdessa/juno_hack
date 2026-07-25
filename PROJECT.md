@@ -43,11 +43,20 @@ private practices, never the headline.
 
 ## Team split
 
-- **UI**: teammate builds the dashboard visually in Lovable. No written plan
-  needed for this track — once published, scrape the Lovable site's
-  generated codebase into this repo to wire up real data.
-- **Backend**: see `docs/plans/2026-07-25-website-backend-plan.md`.
-- **Agent call workflow**: see `docs/plans/2026-07-25-agent-call-workflow-plan.md`.
+The boundary: whoever owns a thing that **talks** owns only that; everything
+that touches **data** is one person's.
+
+- **Backend + web app AI** — copilot, dispatch, results ingestion, database,
+  dashboard agent. See `docs/plans/2026-07-25-website-backend-plan.md`.
+- **Call agent** — the ElevenLabs voice agent that phones patients, plus its
+  phone number. Nothing else. See
+  `docs/plans/2026-07-25-agent-call-workflow-plan.md`.
+- **UI** — built visually in Lovable, scraped into this repo once published.
+  No written plan for this track.
+
+n8n was dropped when the call track narrowed to the agent itself: with one
+person owning both sides of the plumbing, a second runtime and a second
+credential store were cost without benefit.
 
 ## Tech stack
 

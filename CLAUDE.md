@@ -70,10 +70,15 @@ Two Opus 5 gotchas already hit, don't undo them:
 
 ## Working agreements
 
-- Two active build tracks: website/backend (Supabase + API layer) and agent
-  call workflow (n8n + ElevenLabs + calendar). They integrate through the
-  `tasks`/`calls`/`bookings` tables in Supabase — treat that schema as the
-  contract between tracks.
+- Two active build tracks. **Backend + web app AI** owns Supabase, the
+  copilot, dispatch, results ingestion, and the dashboard agent. **Call
+  agent** owns only the ElevenLabs voice agent and its phone number — it
+  never touches the database. The contract is three things from the call
+  track: an `agent_id`, a working phone number, and an agent that reads
+  `patient_name` and `questions` as dynamic variables.
+- No n8n. The backend calls ElevenLabs directly; a second runtime and
+  credential store bought nothing once one person owned both sides of the
+  plumbing.
 - Before adding a new table/field, check `docs/plans/` — if it's not needed
   for the hero loop, don't add it yet.
 - Test the real outbound call against a real phone number before trusting
