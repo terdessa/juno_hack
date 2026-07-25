@@ -1,63 +1,65 @@
-# Plan 2: Agent Call Workflow (n8n + ElevenLabs + Calendar)
+# Plan 2: The Call Agent (ElevenLabs)
 
-Owner: agent track. Triggered by Plan 1's "run now" webhook, writes results
-back into the same Supabase tables Plan 1 reads from — that's the entire
-integration surface between the two tracks.
+Owner: agent track. **Scope is the voice agent itself — not the plumbing.**
+Everything that touches Supabase is Plan 1.
 
-## Goal
+n8n has been dropped. The backend calls ElevenLabs directly, so there is no
+workflow tool in the middle.
 
-Take a task, place a real outbound call, get real answers back into
-Supabase, plus (once the core loop works) book a calendar slot and score
-mood.
+## What this track owns
 
-## Core loop (build and prove this first, against a real phone number)
+Make an AI agent that can phone a real patient, ask the questions it is
+given, and hold a conversation that doesn't feel like a phone tree.
 
-1. n8n webhook trigger receives `{ task_id }` from the website backend.
-2. n8n reads the task + patient context from Supabase (questions to ask,
-   patient name/history for the agent's opening line).
-3. n8n calls the ElevenLabs Conversational AI API to originate an outbound
-   call to the patient's phone number, passing the question list as the
-   agent's script/goal.
-4. Wait for call completion (ElevenLabs webhook, or n8n poll if no push
-   webhook available) and pull the transcript.
-5. Send the transcript to OpenAI/Anthropic with a structured-extraction
-   prompt: one answer per question asked, plus a mood/sentiment
-   label+score derived from tone and word choice.
-6. Write a `calls` row (transcript, extracted_answers, mood_score) and
-   update the `tasks` row to `status = done`.
-7. Supabase realtime pushes this to the dashboard automatically — no work
-   needed on this side beyond the writes.
+1. **Provision a phone number** and connect it to an ElevenLabs
+   Conversational AI agent (Twilio elastic SIP trunk, or a number bought
+   natively through ElevenLabs).
+2. **Build and tune the agent**: system prompt, voice, greeting, turn-taking,
+   interruption handling. It should identify itself as calling on behalf of
+   the doctor, ask the questions it was given, follow up briefly if an answer
+   is unclear, and wrap up politely.
+3. **Accept per-call context as dynamic variables** — the questions differ on
+   every call, so they cannot be baked into the agent prompt (see contract).
+4. **Prove it on a real phone.** This is the single biggest demo risk. A
+   voice that sounds fine in the browser preview can sound robotic or clipped
+   over a real phone line.
 
-## Stretch 1: calendar booking (build after core loop is proven)
+## Contract with Plan 1
 
-- If the extracted answers indicate the patient wants an in-person
-  follow-up, call Google Calendar/Calendly API for the doctor's
-  availability, book the nearest real open slot, capture the event id.
-- Write a `bookings` row linked to the patient/task.
-- Never invent a time slot — only book against real fetched availability.
+Deliver these three things and the tracks connect:
 
-## Stretch 2: mood/sentiment (build after calendar booking, if time allows)
+| # | Deliverable | Notes |
+|---|---|---|
+| 1 | `agent_id` | The configured ElevenLabs agent |
+| 2 | A working phone number attached to it | Must be able to dial a UK mobile |
+| 3 | Confirmation the agent reads these dynamic variables | `patient_name`, `questions` |
 
-- Already partially covered by step 5's mood_score. If time allows, refine
-  by comparing against the patient's own prior call sentiment (trend, not
-  absolute) rather than a single-call score in isolation.
+The backend passes `questions` as the list the copilot drafted. The agent
+must ask them in order and must not invent extra clinical questions.
+
+**Post-call webhook:** point it at the URL Plan 1 provides. The backend
+handles the transcript from there — extraction, mood scoring, and writing to
+the database are not this track's problem.
+
+## Explicitly not this track
+
+- Placing the outbound call (backend calls the ElevenLabs API).
+- Reading or writing Supabase.
+- Transcript extraction, mood scoring, calendar booking.
+
+## Latency
+
+Do not put anything in the live audio path. The whole conversation runs
+inside ElevenLabs — that is why we are using it rather than assembling
+STT → LLM → TTS ourselves, which compounds delay at every hop. Give the
+agent everything it needs at call start; a mid-call lookup is the fastest
+way to make it feel laggy.
 
 ## Demo-readiness checklist
 
-- [ ] Run at least one full end-to-end test call to a real phone before
-      relying on this for the live demo — this is the single biggest
-      failure point.
-- [ ] Handle both "due_at in the future" (real scheduled trigger) and
-      "run now" (demo button) without different code paths.
-- [ ] Record a clean successful take of the full loop for the submitted
-      MP4, independent of whether the live judging-session run succeeds
-      perfectly — the MP4 deadline (Sun 12:00) doesn't require a live call
-      in front of anyone.
-- [ ] Confirm ElevenLabs voice sounds acceptable over a real phone line
-      (not just in-browser) before the day of the demo.
-
-## Explicitly not building here
-
-- Task parsing (Plan 1 owns turning doctor instructions into tasks).
-- Dashboard UI/display of any of this data.
-- No-show/cancellation calling, team handoff — out of scope entirely.
+- [ ] One full call to a real phone, end to end, before trusting this.
+- [ ] Voice sounds acceptable over a phone line, not just in-browser.
+- [ ] Agent handles being interrupted without losing its place.
+- [ ] Agent copes with voicemail / no answer without hanging the call.
+- [ ] A clean recorded take exists for the MP4, independent of whether the
+      live judging run succeeds.
