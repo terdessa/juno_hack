@@ -1,4 +1,4 @@
-# Project: Doctor Task Copilot (name TBD)
+# Medley
 
 ## Problem statement (final)
 
@@ -14,32 +14,46 @@ Do NOT lead with "handle more patients" — reads as more workload to doctors
 and kills buy-in. It can appear as a one-line business-case footnote for
 private practices, never the headline.
 
-## Hero demo loop (the one thing that must work)
+## Positioning
 
-1. Doctor dashboard: patient list, sorted by most-recently-seen by default,
-   re-sortable, click a patient to expand their record.
-2. Doctor speaks/types a loose instruction into a copilot box
-   ("call John tomorrow, ask if the new dose is working").
-3. Copilot parses it into a structured task (patient, question(s), due time).
-4. At the scheduled time (or "run now" for demo), an agent places a real
-   outbound call via ElevenLabs and has a real conversation.
-5. Structured answers + a mood/sentiment read land back on the dashboard
-   live, against that task.
+Medley sits *on top of* the practice software the doctor already uses
+(EMIS, SystmOne) rather than replacing it — a widget in the corner they
+never have to leave their main screen for.
 
-## Stretch features (after the core loop works, in this order)
+## The demo loop
 
-1. **Calendar booking** — if the patient asks for an in-person follow-up
-   during the call, the agent checks the doctor's Google Calendar/Calendly
-   availability and books a real slot. Lower risk, build first.
-2. **Mood/sentiment analysis** — surfaced per-call from tone/word choice.
-   Higher risk to demo convincingly, build second.
+1. Doctor talks to Medley — voice or text, mid-clinic, in half sentences:
+   *"ring john tomorrow, forgot to ask how the new tablets are treating him."*
+2. Medley reads that patient's record and writes the questions the voice
+   agent will ask aloud — grounded in their actual medication and history,
+   never "how are you feeling?". It asks back if a wrong guess would matter.
+3. At the scheduled time (or immediately), the voice agent phones the
+   patient and holds the conversation.
+4. The transcript comes back as structured answers, a mood read, and any
+   safeguarding tags — landing on the dashboard live, with no refresh.
 
-## Explicitly out of scope (mention in pitch narrative only, don't build)
+**Status:** steps 1-2 work end to end. Steps 3-4 are unbuilt and blocked
+on an ElevenLabs agent.
 
-- Team handoff / reassignment when doctor is on leave.
-- Manual task creation form (the copilot IS the task creation UI).
-- No-show/cancellation calling (used only as a spoken example of "other
-  tasks this could do").
+## Scope, after the doctor's feedback
+
+A practising GP reviewed the dashboard and told us what doctors need on
+screen. That promoted three things from stretch to requirement:
+
+- **Multidisciplinary team** — a task can go to a nurse, pharmacist, or
+  colleague, not just the voice agent. This is what makes "if I'm on leave
+  these don't die" real rather than a slide.
+- **Mood and safeguarding tags** on completed calls.
+- **Follow-up booking** when a patient asks for an in-person appointment.
+
+The UI is therefore the spec: extend the schema to match it, not the
+reverse.
+
+## Still out of scope
+
+- No-show/cancellation calling — a spoken example of "other tasks this
+  could do", not something to build.
+- Auth, multi-tenancy, anything for a second doctor.
 
 ## Team split
 
@@ -60,13 +74,17 @@ credential store were cost without benefit.
 
 ## Tech stack
 
-- **Frontend**: Lovable-generated UI, scraped into this repo.
-- **Database**: Supabase (sponsor tool).
-- **Orchestration**: n8n workflows.
-- **AI**: OpenAI + Anthropic (sponsor credits) for task parsing / transcript
-  extraction / sentiment.
-- **Voice**: ElevenLabs (sponsor tool) for the outbound conversational call.
-- **Calendar**: Google Calendar or Calendly API.
+TypeScript throughout; no Python.
+
+- **Frontend** — TanStack Start + React 19 + Tailwind 4 + shadcn, from
+  Lovable, in `frontend/`. Package manager `bun`.
+- **Database** — Supabase Postgres, with realtime driving the live update.
+- **API** — Supabase Edge Functions on Deno.
+- **Dashboard agent** — Anthropic Claude Haiku 4.5, multi-turn tool loop.
+- **Voice (dashboard)** — the browser's own speech engine, in and out. No
+  key, no round trip. `speak()` is the seam to swap for ElevenLabs TTS.
+- **Voice (patient calls)** — ElevenLabs Conversational AI. Not yet built.
+- **Post-call AI** — n8n workflow. Not yet built.
 
 ## Hackathon constraints (from HACK_DESCRIPTION.txt)
 

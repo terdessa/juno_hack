@@ -1,5 +1,20 @@
 # Plan 1 Architecture: Backend + Copilot Pipeline
 
+> ⚠️ **Partly superseded — read `CLAUDE.md` and `PROJECT.md` first.**
+>
+> Written before the build. Still accurate on the shape of things: reads
+> bypass the API layer, tools re-validate LLM args, patient data is pulled
+> not dumped, secrets stay server-side.
+>
+> Out of date on specifics:
+> - `/copilot` was replaced by `/agent`, a multi-turn conversational agent.
+>   The one-shot request pipeline in §3 no longer exists.
+> - The model is Haiku 4.5, not Sonnet 5.
+> - `/tasks-run` calls ElevenLabs, not n8n. n8n is kept for the post-call
+>   workflow only.
+> - `/transcribe` was never built — voice uses the browser's speech engine.
+> - The schema grew considerably when the UI became the spec.
+
 Concrete architecture for the backend track. Plan 1
 (`docs/plans/2026-07-25-website-backend-plan.md`) says *what* to build;
 this says *how*, with the exact tools, models, contracts and logic.
