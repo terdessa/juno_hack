@@ -8,11 +8,13 @@
 
 import { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
+import { dispatchTask } from "../_shared/dispatch.ts";
 
 export const MAX_QUESTIONS = 5;
 export const MAX_QUESTION_LENGTH = 200;
 export const MAX_PURPOSE_LENGTH = 120;
 export const SEARCH_RESULT_LIMIT = 10;
+export const PATIENT_LIST_LIMIT = 50;
 export const RECENT_HISTORY_LIMIT = 3;
 export const DEFAULT_ASSIGNEE = "medley";
 
@@ -58,8 +60,17 @@ export const TOOL_DEFINITIONS = [
     },
   },
   {
+    name: "list_patients",
+    description:
+      "The practice's whole patient list, most recently seen first. Use when the " +
+      "doctor asks who is on their list rather than about one person.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
     name: "list_tasks",
-    description: "List the current call tasks, newest first. Use for questions like 'what's outstanding?'.",
+    description:
+      "The current call tasks with the outcome of any call that has already " +
+      "happened. Use for 'what's outstanding?' and for 'what did she say?'.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
   {
@@ -167,10 +178,28 @@ export async function executeTool(
       };
     }
 
+    case "list_patients": {
+      const { data, error } = await db
+        .from("patients")
+        .select("id, name, dob, condition, phone, last_seen_at")
+        .eq("status", "active")
+        .order("last_seen_at", { ascending: false })
+        .limit(PATIENT_LIST_LIMIT);
+      if (error) return { content: `Error: ${error.message}` };
+      return {
+        content: data.length ? JSON.stringify(data) : "There are no active patients on the list.",
+      };
+    }
+
     case "list_tasks": {
+      // Joining the call in means "what did Margaret say?" is answerable in one
+      // hop rather than a lookup followed by a second lookup.
       const { data, error } = await db
         .from("tasks")
-        .select("id, purpose, status, due_at, urgency, patients(name)")
+        .select(
+          "id, purpose, status, due_at, urgency, patients(name), " +
+            "calls(status, summary, mood, extracted_answers, ended_at)",
+        )
         .order("due_at", { ascending: true })
         .limit(20);
       if (error) return { content: `Error: ${error.message}` };
@@ -213,18 +242,15 @@ export async function executeTool(
     case "start_call_now": {
       const parsed = startCallArgs.safeParse(rawArgs);
       if (!parsed.success) return invalid(parsed.error.message);
-      const url = Deno.env.get("SUPABASE_URL");
-      const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-      const response = await fetch(`${url}/functions/v1/tasks-run`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ task_id: parsed.data.task_id }),
-      });
-      const body = await response.json().catch(() => ({}));
+      // Straight to the dispatcher rather than back out through /tasks-run over
+      // HTTP. The doctor is waiting on this reply, and that hop bought nothing
+      // but latency and a second thing that could time out.
+      const result = await dispatchTask(db, parsed.data.task_id);
       return {
-        content: response.ok
-          ? "Call started."
-          : `Error: ${body.message ?? `dispatch returned ${response.status}`}`,
+        content:
+          result.status === "dispatched"
+            ? "The phone is ringing now."
+            : `Error: ${result.message}`,
       };
     }
 

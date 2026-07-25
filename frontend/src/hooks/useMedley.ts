@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { fetchPatients, fetchTasks } from "@/lib/medley-api";
-import type { CallTask, Patient } from "@/lib/mock-data";
+import type { CallTask, Patient } from "@/lib/types";
 
 /**
  * Live dashboard data. Refetches whenever a task or call changes anywhere —

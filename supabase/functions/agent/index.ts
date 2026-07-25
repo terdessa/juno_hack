@@ -67,7 +67,7 @@ Deno.serve(async (req: Request) => {
     const result = await converse(
       parsed.data.messages,
       parsed.data.current_patient_id ?? null,
-      parsed.data.current_view ?? "calls",
+      parsed.data.current_view ?? null,
     );
     return json(result);
   } catch (err) {
@@ -92,7 +92,7 @@ interface AgentReply {
 async function converse(
   history: { role: "user" | "assistant"; content: string }[],
   currentPatientId: string | null,
-  currentView: string,
+  currentView: string | null,
 ): Promise<AgentReply> {
   const anthropic = new Anthropic({ apiKey: requireEnv("ANTHROPIC_API_KEY") });
   const db = createClient(
@@ -118,8 +118,16 @@ async function converse(
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      system,
-      tools: TOOL_DEFINITIONS,
+      // Cached, and this matters more than it looks: the prompt and the tool
+      // schemas are resent on every iteration of the loop below and on every
+      // turn of the conversation, and they dwarf what the doctor actually said.
+      // Marking the end of the tool list caches everything before it too.
+      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+      tools: TOOL_DEFINITIONS.map((tool, i) =>
+        i === TOOL_DEFINITIONS.length - 1
+          ? { ...tool, cache_control: { type: "ephemeral" as const } }
+          : tool,
+      ),
       messages,
     });
 

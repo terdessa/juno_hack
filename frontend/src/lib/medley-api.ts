@@ -8,7 +8,7 @@
 
 import { supabase, FUNCTIONS_URL, ANON_KEY } from "./supabase";
 import type { CallRow, Json, PatientRow, TaskRow } from "./db.types";
-import type { CallStatus, CallTag, CallTask, Mood, Patient } from "./mock-data";
+import type { CallStatus, CallTag, CallTask, Mood, Patient } from "./types";
 
 // --- row -> UI ------------------------------------------------------------
 
@@ -86,6 +86,7 @@ export function toCallTask(row: TaskWithCall): CallTask {
       ? { type: call.follow_up_type as "in-person" | "phone" | "none" }
       : undefined,
     tags: call?.tags ? (asStringArray(call.tags) as CallTag[]) : undefined,
+    error: call?.error ?? undefined,
   };
 }
 

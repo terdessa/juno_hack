@@ -59,7 +59,7 @@ export function AgentHome({ onAction }: { onAction: (a: UiAction) => void }) {
     setPhase(next);
   }, []);
 
-  const { supported, start, stop } = useSpeech({
+  const { supported, transcribing, start, stop } = useSpeech({
     onTranscript: (text) => {
       setPartial("");
       sendRef.current(text, true);
@@ -200,6 +200,7 @@ export function AgentHome({ onAction }: { onAction: (a: UiAction) => void }) {
         phase={phase}
         partial={partial}
         supported={supported}
+        transcribing={transcribing}
         error={micError}
         onToggle={toggleVoice}
         onUseText={() => changeMode("text")}

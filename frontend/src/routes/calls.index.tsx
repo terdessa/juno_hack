@@ -6,7 +6,7 @@ import { Shell } from "@/components/medley/Shell";
 import { StatusDot, statusLabel } from "@/components/medley/status";
 import { ListSkeleton } from "@/components/medley/loading";
 import { formatRelative, formatTime } from "@/lib/format";
-import type { CallTask } from "@/lib/mock-data";
+import type { CallTask } from "@/lib/types";
 
 export const Route = createFileRoute("/calls/")({
   head: () => ({ meta: [{ title: "Calls · Medley" }] }),

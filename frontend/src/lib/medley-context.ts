@@ -9,7 +9,7 @@
  */
 
 import { createContext, useContext } from "react";
-import type { CallTask, Patient } from "@/lib/mock-data";
+import type { CallTask, Patient } from "@/lib/types";
 
 export interface MedleyStore {
   patients: Patient[];

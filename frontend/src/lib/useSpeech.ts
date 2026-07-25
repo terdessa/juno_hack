@@ -1,17 +1,24 @@
 /**
- * Voice in and out using what the browser already ships — no key, no vendor,
- * no latency budget spent on a round trip.
+ * Voice in and out.
  *
  * The hook exposes explicit start/stop rather than only a toggle, because a
  * voice-to-voice conversation drives the microphone from a state machine:
  * listen, think, speak, listen again. A toggle can't express that.
  *
- * ponytail: swap the speak() body for ElevenLabs TTS when a key exists; the
- * call sites don't change. Recognition stays native either way — it's local,
- * instant, and free.
+ * The two directions are deliberately asymmetric:
+ *
+ * - **Out** goes to ElevenLabs, because the browser's own synthesiser sounds
+ *   like a satnav and this is the voice of a medical practice. Falls back to the
+ *   satnav if the request fails, on the grounds that a reply the doctor can hear
+ *   beats a silent one.
+ * - **In** stays with the browser's recogniser wherever it exists. It runs
+ *   locally and returns words *while they are being spoken*; uploading audio to
+ *   a better model can only be slower. Browsers without one (Safari, Firefox)
+ *   record and upload instead — see `voice.ts`.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { canRecord, fetchSpeech, startRecording, transcribeAudio, type Recording } from "./voice";
 
 // Chrome exposes this prefixed; TypeScript's DOM lib doesn't know it.
 type SpeechRecognitionLike = {
@@ -52,11 +59,16 @@ interface SpeechOptions {
 
 export function useSpeech({ onTranscript, onPartial, onSilence, onError }: SpeechOptions) {
   const [listening, setListening] = useState(false);
+  // Only ever true in upload mode: native recognition has no gap between the
+  // doctor finishing and the words arriving.
+  const [transcribing, setTranscribing] = useState(false);
   // null until the effect has looked. Starting at `false` made the server
   // render "this browser can't hear you", which then flashed away on hydration
   // — a false negative on the primary control.
   const [supported, setSupported] = useState<boolean | null>(null);
   const recognition = useRef<SpeechRecognitionLike | null>(null);
+  const mode = useRef<"native" | "upload" | null>(null);
+  const recording = useRef<Recording | null>(null);
   // Mirrors `listening` for the callbacks, which would otherwise close over a
   // stale value and leave start/stop unstable.
   const isListening = useRef(false);
@@ -75,9 +87,16 @@ export function useSpeech({ onTranscript, onPartial, onSilence, onError }: Speec
   useEffect(() => {
     const Ctor = recognitionCtor();
     if (!Ctor) {
-      setSupported(false);
-      return;
+      // No local recogniser. Record the utterance and send it to be
+      // transcribed — slower, but the alternative here is a dead microphone.
+      mode.current = canRecord() ? "upload" : null;
+      setSupported(mode.current !== null);
+      return () => {
+        recording.current?.cancel();
+        recording.current = null;
+      };
     }
+    mode.current = "native";
     setSupported(true);
 
     const r = new Ctor();
@@ -134,8 +153,31 @@ export function useSpeech({ onTranscript, onPartial, onSilence, onError }: Speec
   }, [setListeningBoth]);
 
   const start = useCallback(() => {
+    if (isListening.current) return;
+
+    if (mode.current === "upload") {
+      setListeningBoth(true);
+      void startRecording()
+        .then((session) => {
+          // The permission prompt can outlast the doctor's patience; if they
+          // gave up while it was open, don't quietly start recording.
+          if (!isListening.current) {
+            session.cancel();
+            return;
+          }
+          recording.current = session;
+        })
+        .catch(() => {
+          setListeningBoth(false);
+          handlers.current.onError?.(
+            "Microphone access is blocked. Allow it in your browser's address bar.",
+          );
+        });
+      return;
+    }
+
     const r = recognition.current;
-    if (!r || isListening.current) return;
+    if (!r) return;
     gotResult.current = false;
     stoppedByUs.current = false;
     try {
@@ -147,6 +189,28 @@ export function useSpeech({ onTranscript, onPartial, onSilence, onError }: Speec
   }, [setListeningBoth]);
 
   const stop = useCallback(() => {
+    if (mode.current === "upload") {
+      const session = recording.current;
+      recording.current = null;
+      setListeningBoth(false);
+      if (!session) return;
+      setTranscribing(true);
+      void session
+        .finish()
+        .then((audio) => (audio.size > 0 ? transcribeAudio(audio) : ""))
+        .then((text) => {
+          if (text.trim()) handlers.current.onTranscript(text.trim());
+          else handlers.current.onSilence?.();
+        })
+        .catch((err: unknown) => {
+          handlers.current.onError?.(
+            err instanceof Error ? err.message : "Couldn't make out that recording.",
+          );
+        })
+        .finally(() => setTranscribing(false));
+      return;
+    }
+
     const r = recognition.current;
     if (!r) return;
     stoppedByUs.current = true;
@@ -165,35 +229,88 @@ export function useSpeech({ onTranscript, onPartial, onSilence, onError }: Speec
     else start();
   }, [start, stop]);
 
-  return { listening, supported, start, stop, toggle };
+  return { listening, transcribing, supported, start, stop, toggle };
 }
 
+// One voice at a time. `generation` invalidates a reply still being synthesised
+// when the doctor interrupts — without it, barging in mid-answer would be
+// followed a second later by the answer you barged in on.
+let playing: HTMLAudioElement | null = null;
+let inFlight: AbortController | null = null;
+let generation = 0;
+
 /**
- * Reads Medley's reply aloud. Resolves when the voice finishes, so a
- * conversation can hand the turn back to the microphone at the right moment.
+ * Reads Medley's reply aloud, calling back when the voice finishes so the
+ * conversation can hand the turn to the microphone at the right moment.
+ *
+ * `onDone` fires exactly once on every path, including failure. The state
+ * machine in AgentHome is waiting on it to start listening again, and a path
+ * that forgets to call it leaves the doctor talking to a screen that stopped
+ * paying attention.
  */
 export function speak(text: string, onDone?: () => void) {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+  stopSpeaking();
+  const mine = ++generation;
+
+  let finished = false;
+  const finish = () => {
+    if (finished || mine !== generation) return;
+    finished = true;
     onDone?.();
+  };
+
+  const controller = new AbortController();
+  inFlight = controller;
+
+  void (async () => {
+    try {
+      const audio = new Audio(URL.createObjectURL(await fetchSpeech(text, controller.signal)));
+      if (mine !== generation) {
+        URL.revokeObjectURL(audio.src);
+        return;
+      }
+      playing = audio;
+      audio.onended = () => {
+        URL.revokeObjectURL(audio.src);
+        finish();
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(audio.src);
+        finish();
+      };
+      await audio.play();
+    } catch {
+      if (mine !== generation) return;
+      speakWithBrowser(text, finish);
+    }
+  })();
+}
+
+/** The browser's own synthesiser. Second choice, but always there. */
+function speakWithBrowser(text: string, onDone: () => void) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+    onDone();
     return;
   }
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "en-GB";
   utterance.rate = 1.05;
-  // Both fire in practice depending on browser; guard against a double call.
-  let finished = false;
-  const finish = () => {
-    if (finished) return;
-    finished = true;
-    onDone?.();
-  };
-  utterance.onend = finish;
-  utterance.onerror = finish;
+  utterance.onend = onDone;
+  utterance.onerror = onDone;
   window.speechSynthesis.speak(utterance);
 }
 
 export function stopSpeaking() {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
+  generation++;
+  inFlight?.abort();
+  inFlight = null;
+  if (playing) {
+    playing.pause();
+    URL.revokeObjectURL(playing.src);
+    playing = null;
+  }
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
 }

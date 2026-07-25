@@ -35,6 +35,7 @@ export function VoiceConsole({
   phase,
   partial,
   supported,
+  transcribing,
   error,
   onToggle,
   onUseText,
@@ -43,6 +44,12 @@ export function VoiceConsole({
   partial: string;
   /** null while we haven't established whether this browser can listen. */
   supported: boolean | null;
+  /**
+   * Only browsers without local recognition reach this: their words are on
+   * their way to be transcribed. Saying so fills what would otherwise be a
+   * second of the console looking idle straight after the doctor spoke.
+   */
+  transcribing: boolean;
   error: string | null;
   onToggle: () => void;
   onUseText: () => void;
@@ -52,7 +59,7 @@ export function VoiceConsole({
       <div className="rounded-2xl border border-border bg-card px-5 py-6 text-center">
         <p className="text-body font-medium">This browser can't hear you</p>
         <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-          Speech recognition needs Chrome, Edge, or Safari. Everything works the same typed.
+          It has no microphone we can reach. Everything works the same typed.
         </p>
         <button
           type="button"
@@ -65,9 +72,11 @@ export function VoiceConsole({
     );
   }
 
-  const copy = COPY[phase];
+  const copy = transcribing
+    ? { status: "Getting that down", hint: "One moment.", action: "Transcribing" }
+    : COPY[phase];
   const active = phase === "listening";
-  const thinking = phase === "thinking";
+  const thinking = phase === "thinking" || transcribing;
   const speaking = phase === "speaking";
 
   return (

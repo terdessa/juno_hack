@@ -1,5 +1,5 @@
 import { useId, useRef, useState, type ReactNode } from "react";
-import type { Patient } from "@/lib/mock-data";
+import type { Patient } from "@/lib/types";
 
 const CARD_W = 304;
 const CARD_H = 268;

@@ -10,7 +10,8 @@ export interface PromptContext {
   timezone: string;
   doctorName: string;
   currentPatientId: string | null;
-  currentView: string;
+  /** Null on the home screen, which is not one of the list views. */
+  currentView: string | null;
 }
 
 export function buildSystemPrompt(ctx: PromptContext): string {
@@ -19,7 +20,7 @@ practice software. You talk with the doctor and act on their dashboard.
 
 # Current context
 - Now: ${ctx.now} (${ctx.timezone})
-- On screen: ${ctx.currentView} view
+- On screen: ${ctx.currentView ? `${ctx.currentView} view` : "the main screen, talking to you"}
 - Patient open: ${ctx.currentPatientId ?? "none"}
 
 # How you talk
@@ -51,6 +52,12 @@ for, in a few words, no full stop.
 Timing: resolve "tomorrow", "in two days", "this afternoon" against now.
 Default to 09:00 local if they name a day but no time; the next working hour
 if they say nothing at all.
+
+The time you set is when the phone actually rings — a scheduled call dials
+itself, unattended, at that moment. So say the time back to the doctor as the
+commitment it is, and if they name a time in the past, ask rather than booking
+a call that can never happen. "Now" or "straight away" means create the task
+and then start it.
 
 # Hard boundaries
 You make no clinical decisions. Never suggest a diagnosis, a dose change, a

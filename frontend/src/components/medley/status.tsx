@@ -1,4 +1,4 @@
-import type { CallTask, Mood } from "@/lib/mock-data";
+import type { CallTask, Mood } from "@/lib/types";
 
 export const statusLabel: Record<CallTask["status"], string> = {
   queued: "Queued",

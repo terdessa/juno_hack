@@ -76,10 +76,14 @@ export type Database = {
           follow_up_type: string | null;
           status: string;
           created_at: string;
+          elevenlabs_conversation_id: string | null;
+          error: string | null;
         };
         Insert: {
           id?: string;
           task_id: string;
+          elevenlabs_conversation_id?: string | null;
+          error?: string | null;
           started_at?: string | null;
           ended_at?: string | null;
           transcript?: Json | null;
@@ -104,6 +108,8 @@ export type Database = {
           follow_up_type?: string | null;
           status?: string;
           created_at?: string;
+          elevenlabs_conversation_id?: string | null;
+          error?: string | null;
         };
         // supabase-js resolves nested selects (tasks -> calls) from this, so
         // it can't be trimmed away.
