@@ -43,16 +43,22 @@ their shoulders, and reports back.
   replaced the assign-a-call form. Voice in/out via the browser's own
   speech engine (Chrome/Edge).
 
-**Not built — this is the gap:**
-- `/tasks-run` is written but has **never executed**. It still POSTs to an
-  n8n webhook that doesn't exist.
-- `/call-webhook` (transcript → answers, mood, tags, summary) doesn't
-  exist. Nothing writes call results, so `mood`/`tags`/`summary` columns
-  stay empty.
-- No ElevenLabs agent, so **no call has ever been placed**.
+- The ElevenLabs agent `agent_9601kycv0rkme9ya9wtxt5dkqspg` on
+  `+14243533227`, tested to a real UK mobile. Its prompt says Dr Hartley.
 
-**Blocked on:** an ElevenLabs API key and an `agent_id`. That is the
-single highest-value thing anyone can unblock.
+**Written, typechecked, not yet deployed:**
+- `_shared/dispatch.ts` places the call. Shared by "call now" and the
+  scheduler so the two paths cannot drift.
+- `/tasks-due` — the clock, driven by pg_cron. This is what makes a task
+  scheduled for noon actually ring at noon.
+- `/call-webhook` — transcript in, summary/mood/tags/answers out, task
+  closed. Verifies the ElevenLabs HMAC.
+- `/speak` and `/transcribe` — ElevenLabs voice for the dashboard.
+
+**The gap is deployment, not code. Follow `docs/DEPLOY.md`.** Unapplied:
+migration `0002_live_calls.sql`, the function deploy, the pg_cron schedule,
+the ElevenLabs post-call webhook, and real phone numbers on the patient rows
+(every one is a `+4400000000xx` placeholder that will not dial).
 
 **Also outstanding:** real-user evidence (a practising GP shaped the
 dashboard's data model — capture who, when, and which decisions came from
@@ -74,9 +80,16 @@ TypeScript throughout, no Python. Edge Functions run on Deno (imports are
 
 ## AI provider split
 
-Anthropic for all reasoning. OpenAI only for speech-to-text if the browser
-engine proves insufficient — Anthropic has no audio input. Don't add a
+Anthropic for all reasoning — the dashboard agent and post-call extraction.
+ElevenLabs for all speech, in both directions and on both surfaces: the phone
+call, the dashboard's voice (`/speak`), and transcription for browsers with no
+local recogniser (`/transcribe`). OpenAI is no longer used; a second speech
+vendor bought nothing once the ElevenLabs key was already here. Don't add a
 second reasoning stack just to spend sponsor credits.
+
+Listening in the browser stays on the Web Speech API wherever it exists. It
+recognises locally and returns words while they are still being spoken —
+uploading audio to a better model can only be slower.
 
 Model gotchas, don't undo these:
 - **Haiku 4.5** (current, `/agent`) predates adaptive thinking and the
@@ -97,11 +110,12 @@ superseded by `/agent` and no longer reachable from the UI.
 - `docs/plans/` — backend plan, call-agent plan.
 - `docs/architecture/` — backend architecture. **Partly stale**: still
   describes `/copilot` and n8n. Trust this file and `PROJECT.md` first.
-- `supabase/migrations/` — DB schema. `0001_init.sql` plus two migrations
-  applied live (privilege grants, dashboard alignment) that are recorded in
-  Supabase but only partly reflected in the file.
-- `supabase/functions/` — `agent` (live), `tasks-run` (untested),
-  `copilot` (dead).
+- `docs/DEPLOY.md` — the runbook. Start here to get anything live.
+- `supabase/migrations/` — `0001_init.sql`, then `0002_live_calls.sql` which
+  reconciles the file history with a database that had been edited by hand and
+  adds what the call loop needs.
+- `supabase/functions/` — `agent` (live), `_shared/dispatch.ts`, `tasks-run`,
+  `tasks-due`, `call-webhook`, `speak`, `transcribe`, `copilot` (dead).
 - `frontend/` — the dashboard. `.env` holds the Supabase URL + anon key.
 - `.env.example` — documents which secret goes *where*; most aren't read
   from a local `.env` at all.
@@ -114,11 +128,10 @@ superseded by `/agent` and no longer reachable from the UI.
   the database. The contract is three things from the call track: an
   `agent_id`, a working phone number, and an agent that reads
   `patient_name` and `questions` as dynamic variables.
-- **n8n**: decided it stays for the post-call AI workflow (transcript →
-  answers, mood, tags, summary), which is asynchronous and where a visual
-  workflow helps. Nothing is built yet. The dashboard agent deliberately
-  stays an Edge Function — it's on the interactive path where every added
-  hop shows up as the doctor watching a spinner.
+- **n8n is gone.** The post-call workflow it was being kept for is
+  `/call-webhook`, ~200 lines of Deno. A second runtime and credential store
+  bought nothing once one person owned both sides of the plumbing, and it was
+  a second thing that could be down on stage.
 - Before adding a new table/field, check `docs/plans/` — if it's not needed
   for the hero loop, don't add it yet.
 - Test the real outbound call against a real phone number before trusting
