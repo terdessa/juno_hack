@@ -38,7 +38,11 @@ import {
 // database via the store.
 import { assignees, assigneeById, type CallTask, type CallTag, type Mood, type Assignee, type Patient } from "@/lib/mock-data";
 import { useMedleyStore } from "@/lib/medley-store";
-import { deleteTask, updateTask as persistTask } from "@/lib/medley-api";
+import {
+  createTaskFromInstruction,
+  deleteTask,
+  updateTask as persistTask,
+} from "@/lib/medley-api";
 import { formatTime, formatRelative, formatDate, formatDuration } from "@/lib/format";
 
 type View = "calls" | "patients" | "calendar";
@@ -1110,8 +1114,16 @@ function NewCallDialog({
   const [customDate, setCustomDate] = useState(defaultDate);
   const [customTime, setCustomTime] = useState(defaultTime);
 
-  const submit = () => {
-    if (!purpose.trim()) return;
+  const [busy, setBusy] = useState(false);
+  const [askBack, setAskBack] = useState<string | null>(null);
+
+  /**
+   * The doctor writes loosely; Medley reads the patient's record and drafts
+   * the questions the agent will actually ask. The form still owns scheduling
+   * and assignment — those are the doctor's call, not the model's.
+   */
+  const submit = async () => {
+    if (!purpose.trim() || busy) return;
     let scheduledAt: string;
     if (when === "custom") {
       const d = new Date(`${customDate}T${customTime}`);
@@ -1122,17 +1134,40 @@ function NewCallDialog({
         Date.now() + (when === "now" ? 60_000 : when === "15" ? 15 * 60_000 : 60 * 60_000)
       ).toISOString();
     }
-    const isAgent = assigneeById(assigneeId)?.kind === "agent";
-    onCreate({
-      id: `t${Date.now()}`,
-      patientId,
-      purpose: purpose.trim(),
-      scheduledAt,
-      assigneeId,
-      status: when === "now" && isAgent ? "calling" : "queued",
-      transcript: when === "now" && isAgent ? [{ role: "agent", text: "Dialling…" }] : undefined,
-    });
-    onClose();
+
+    setBusy(true);
+    setAskBack(null);
+    try {
+      const result = await createTaskFromInstruction(purpose.trim(), patientId);
+
+      if (result.status === "needs_input") {
+        // Medley couldn't tell who or what was meant. Ask rather than guess.
+        setAskBack(result.message);
+        return;
+      }
+      if (result.status !== "created") {
+        setAskBack(result.message ?? "Something went wrong. Try rephrasing?");
+        return;
+      }
+
+      // Apply the doctor's explicit scheduling and assignment over whatever
+      // the model inferred from the wording.
+      await persistTask(result.task.id, { scheduledAt, assigneeId });
+
+      onCreate({
+        id: result.task.id,
+        patientId: result.task.patient_id,
+        purpose: result.task.purpose ?? purpose.trim(),
+        scheduledAt,
+        assigneeId,
+        status: "queued",
+      });
+      onClose();
+    } catch (err) {
+      setAskBack(err instanceof Error ? err.message : "Couldn't reach Medley.");
+    } finally {
+      setBusy(false);
+    }
   };
 
 
@@ -1213,7 +1248,7 @@ function NewCallDialog({
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
               rows={3}
-              placeholder="e.g. Rebook missed cardiology appointment and check for chest pain or breathlessness."
+              placeholder="Say it how you'd say it out loud — e.g. forgot to ask him how the new tablets are treating him, ring him tomorrow."
               className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -1285,13 +1320,19 @@ function NewCallDialog({
             Cancel
           </button>
           <button
-            onClick={submit}
-            disabled={!purpose.trim()}
+            onClick={() => void submit()}
+            disabled={!purpose.trim() || busy}
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground shadow-soft transition hover:opacity-90 disabled:opacity-40"
           >
             <PhoneCall className="h-4 w-4" />
-            Assign to Medley
+            {busy ? "Reading the record…" : "Assign to Medley"}
           </button>
+          {askBack && (
+            <div className="absolute inset-x-5 bottom-16 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-left text-sm">
+              <span className="font-medium">Medley asks: </span>
+              {askBack}
+            </div>
+          )}
         </div>
       </div>
     </div>
