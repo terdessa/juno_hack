@@ -9,9 +9,28 @@ Endpoint: `POST https://czfjwmzwkifgozkmlsaa.supabase.co/functions/v1/book-appoi
 Nothing in this repo needs changing — it's deployed. What's left is one tool on
 the ElevenLabs agent, which is the call-agent track's side of the contract.
 
-## The tool to add
+## Already applied
 
-In the ElevenLabs agent → **Tools** → add a **Webhook** tool.
+This was applied to `agent_9601kycv0rkme9ya9wtxt5dkqspg` over the ElevenLabs
+REST API on 25 Jul 2026 — the tool is `tool_8501kydpc72xexzt9zbhnp152fmy` and
+the agent's prompt now points at it. Nothing below needs doing again unless the
+agent is rebuilt; it is kept as the record of what the config is.
+
+**Why it wasn't working before:** the prompt instructed the agent to book via
+`calendly_create_event_invitee` and friends, with hardcoded Calendly URIs, but
+`tool_ids` was empty and the only attached tools were `end_call`,
+`language_detection` and `skip_turn`. It was being told to call tools it did
+not have, so it could not book anything. Those 2,200 characters of dead
+instructions were replaced.
+
+`patient_name` is bound to the **dynamic variable**, not written by the model.
+Letting an LLM retype a name is how "Mykyta Yakivets" arrives as "Mikita
+Yakovets" and matches nobody — the same failure we fixed on the transcription
+side with Scribe keyterms.
+
+## The tool, for reference
+
+In the ElevenLabs agent → **Tools** → a **Webhook** tool.
 
 | Field | Value |
 | --- | --- |
