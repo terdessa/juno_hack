@@ -38,6 +38,8 @@ import {
 // database via the store.
 import { assignees, assigneeById, type CallTask, type CallTag, type Mood, type Assignee, type Patient } from "@/lib/mock-data";
 import { useMedleyStore } from "@/lib/medley-store";
+import { MedleyChat } from "./MedleyChat";
+import type { UiAction } from "@/lib/medley-api";
 import {
   createTaskFromInstruction,
   deleteTask,
@@ -103,6 +105,13 @@ export function Dashboard({ onMinimize }: { onMinimize: () => void }) {
     void deleteTask(id).then(reload);
   };
 
+  // The agent can move around the dashboard as part of answering.
+  const handleAgentAction = (action: UiAction) => {
+    if (action.type === "show_view") setView(action.id as View);
+    if (action.type === "select_task") setSelectedId(action.id);
+    if (action.type === "open_patient") setView("patients");
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen max-w-[1400px]">
@@ -138,7 +147,14 @@ export function Dashboard({ onMinimize }: { onMinimize: () => void }) {
         </aside>
       </div>
 
-      {newOpen && <NewCallDialog onClose={() => setNewOpen(false)} onCreate={addTask} />}
+      {newOpen && (
+        <MedleyChat
+          onClose={() => setNewOpen(false)}
+          currentPatientId={selected?.patientId ?? null}
+          currentView={view}
+          onAction={handleAgentAction}
+        />
+      )}
       {editing && (
         <EditCallDialog
           task={editing}

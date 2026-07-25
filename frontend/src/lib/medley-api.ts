@@ -129,6 +129,37 @@ async function callFunction<T>(name: string, body: unknown): Promise<T> {
   return (await response.json()) as T;
 }
 
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface UiAction {
+  type: "open_patient" | "show_view" | "select_task";
+  id: string;
+}
+
+export interface AgentReply {
+  reply: string;
+  actions: UiAction[];
+  detail?: string;
+}
+
+/**
+ * One turn of conversation with Medley. The whole exchange goes up each time —
+ * the function is stateless, the conversation lives in the client.
+ */
+export function talkToAgent(
+  messages: ChatMessage[],
+  context: { currentPatientId?: string | null; currentView?: string },
+): Promise<AgentReply> {
+  return callFunction<AgentReply>("agent", {
+    messages,
+    current_patient_id: context.currentPatientId ?? null,
+    current_view: context.currentView ?? "calls",
+  });
+}
+
 export type CopilotResult =
   | { status: "created"; task: TaskRow }
   | { status: "needs_input"; message: string }
