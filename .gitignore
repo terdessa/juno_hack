@@ -1,3 +1,10 @@
 .env
 node_modules/
 .DS_Store
+
+# Kept on disk, off GitHub. Working notes rather than the project: the
+# organisers' brief, the brainstorm we chose from, and the note the call track
+# handed over with its agent and phone ids in it.
+HACK_DESCRIPTION.txt
+IDEAS.txt
+elevenlabs-handoff.txt
