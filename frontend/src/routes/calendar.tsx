@@ -157,7 +157,7 @@ function CalendarPage() {
           id="cal-clinic"
           icon={<User className="h-3.5 w-3.5" aria-hidden />}
           title="Your clinic"
-          note="Appointments you keep in person."
+          note="In step with your Google Calendar."
           count={clinicCount}
           loading={loading}
         />
@@ -167,7 +167,7 @@ function CalendarPage() {
           emptyLabel="Clear"
           renderItem={(a: Appointment) => {
             const cancelled = a.status === "cancelled";
-            // A Calendly invitee we couldn't match to a patient still belongs
+            // A Google attendee we couldn't match to a patient still belongs
             // in the diary — under their own name, and without a link into a
             // record that isn't theirs.
             const patient = a.patientId ? patientById(a.patientId) : undefined;
@@ -188,13 +188,13 @@ function CalendarPage() {
                   {a.kind === "home-visit" && (
                     <span className="text-xs text-muted-foreground">· visit</span>
                   )}
-                  {a.source === "calendly" && !cancelled && (
+                  {a.source === "google" && !cancelled && (
                     <span
-                      title="Booked on the call"
+                      title="From your Google Calendar"
                       className="text-xs text-muted-foreground"
-                      aria-label="Booked on the call"
+                      aria-label="From your Google Calendar"
                     >
-                      · booked
+                      · Google
                     </span>
                   )}
                 </div>

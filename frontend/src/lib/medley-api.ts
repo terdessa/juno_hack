@@ -153,7 +153,7 @@ export async function fetchAppointments(): Promise<Appointment[]> {
       ? (row.kind as AppointmentKind)
       : "appointment",
     fromTaskId: row.task_id,
-    source: row.source === "calendly" ? "calendly" : "clinic",
+    source: row.source === "google" ? "google" : "clinic",
     status: row.status === "cancelled" ? "cancelled" : "confirmed",
     inviteeName: row.invitee_name,
   }));

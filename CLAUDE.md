@@ -99,6 +99,16 @@ Model gotchas, don't undo these:
   thinking on it — with thinking off it can write a tool call as plain
   text, and the call silently never runs.
 
+## Google Calendar
+
+The clinic diary mirrors the doctor's Google Calendar both ways, on a pg_cron
+every two minutes (`/calendar-sync`). Polled, not pushed: Google's calendar
+push notifications need the receiving domain verified in Search Console and
+nobody can verify `supabase.co`. Auth is a stored refresh token, not a service
+account — service accounts can only act for a user via domain-wide delegation,
+which needs a Workspace admin. Setup: `docs/GOOGLE_CALENDAR.md`. Calendly was
+tried first and removed.
+
 ## Two things that will bite you
 
 **The anon key can only read.** It ships inside the JS bundle, so it is
