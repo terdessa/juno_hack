@@ -8,7 +8,7 @@
  *   { status: 'error',       message }   - something failed
  */
 
-import Anthropic from "npm:@anthropic-ai/sdk@0.32";
+import Anthropic from "npm:@anthropic-ai/sdk@0.114";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { buildSystemPrompt } from "./prompt.ts";
@@ -16,8 +16,11 @@ import { executeTool, TERMINAL_TOOL, TOOL_DEFINITIONS } from "./tools.ts";
 
 /** Hard cap on model turns. Prevents runaway spend and a hung request live. */
 const MAX_ITERATIONS = 6;
-const MODEL = "claude-sonnet-5";
-const MAX_TOKENS = 1024;
+const MODEL = "claude-opus-5";
+/** Thinking is on by default and shares this budget — too low truncates mid-answer. */
+const MAX_TOKENS = 4096;
+/** Latency knob. Raise to "medium" if the drafted questions come out shallow. */
+const EFFORT = "low";
 const TIMEZONE = "Europe/London";
 const DOCTOR_NAME = "Dr Smith"; // ponytail: single hardcoded doctor, no auth this weekend
 
@@ -104,6 +107,9 @@ async function runCopilot(
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: MAX_TOKENS,
+      // Leave thinking on: with it disabled, Opus 5 can emit a tool call as
+      // plain text and the call silently never runs — fatal for a tool loop.
+      output_config: { effort: EFFORT },
       system,
       tools: TOOL_DEFINITIONS,
       messages,
