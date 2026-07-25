@@ -397,6 +397,40 @@ export async function updateTask(
   if (error) throw error;
 }
 
+/**
+ * Takes a call off the queue, or puts it back.
+ *
+ * Conditional on the status it expects to find, for the same reason
+ * `dispatchTask` claims conditionally: the scheduler runs every minute, and
+ * declining a call at the moment it starts dialling must not leave a row
+ * marked `cancelled` while a phone is actually ringing. If the row has already
+ * moved on, nothing is written and the caller is told.
+ */
+export async function setTaskCancelled(
+  taskId: string,
+  cancelled: boolean,
+): Promise<{ ok: boolean; reason?: string }> {
+  const from = cancelled ? "queued" : "cancelled";
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({ status: cancelled ? "cancelled" : "queued" })
+    .eq("id", taskId)
+    .eq("status", from)
+    .select("id")
+    .maybeSingle();
+
+  if (error) return { ok: false, reason: error.message };
+  if (!data) {
+    return {
+      ok: false,
+      reason: cancelled
+        ? "That call already started, so it couldn't be declined."
+        : "That call is no longer declined.",
+    };
+  }
+  return { ok: true };
+}
+
 export async function deleteTask(taskId: string): Promise<void> {
   // Calls reference tasks, so clear them first rather than relying on a
   // cascade the schema doesn't declare.

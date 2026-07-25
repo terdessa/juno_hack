@@ -12,7 +12,7 @@
  * the vocabulary is left.
  */
 
-export type CallStatus = "queued" | "calling" | "completed" | "failed";
+export type CallStatus = "queued" | "calling" | "completed" | "failed" | "cancelled";
 export type Mood = "positive" | "neutral" | "low" | "distressed";
 export type CallTag =
   | "depression-detected"

@@ -1,12 +1,12 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, PhoneCall } from "lucide-react";
+import { ArrowLeft, PhoneCall, Undo2, X } from "lucide-react";
 import { MedleyProvider } from "@/lib/medley-store";
 import { useMedleyStore } from "@/lib/medley-context";
 import { Shell } from "@/components/medley/Shell";
 import { MoodBadge, StatusDot, statusLabel } from "@/components/medley/status";
 import { DetailSkeleton } from "@/components/medley/loading";
-import { runTask } from "@/lib/medley-api";
+import { runTask, setTaskCancelled } from "@/lib/medley-api";
 import { formatDate, formatDuration, formatTime } from "@/lib/format";
 
 export const Route = createFileRoute("/calls/$taskId")({
@@ -30,6 +30,8 @@ function CallPage() {
   const { taskId } = useParams({ from: "/calls/$taskId" });
   const { tasks, patientById, loading, reload } = useMedleyStore();
   const [dispatch, setDispatch] = useState<Dispatch>({ state: "idle" });
+  const [declining, setDeclining] = useState(false);
+  const [declineError, setDeclineError] = useState<string | null>(null);
   const task = tasks.find((t) => t.id === taskId);
 
   if (loading) {
@@ -65,6 +67,14 @@ function CallPage() {
         message: err instanceof Error ? err.message : "The practice server didn't respond.",
       });
     }
+  };
+
+  const setCancelled = async (cancelled: boolean) => {
+    setDeclineError(null);
+    const result = await setTaskCancelled(task.id, cancelled);
+    if (!result.ok) setDeclineError(result.reason ?? "That didn't save.");
+    setDeclining(false);
+    await reload();
   };
 
   return (
@@ -133,15 +143,52 @@ function CallPage() {
                 </button>
               </div>
             </div>
+          ) : declining ? (
+            /* Declining is the one action here that stops something from
+               happening on its own, so it gets a sentence about what that
+               means rather than a bare "Are you sure?". */
+            <div className="max-w-md rounded-xl border border-input bg-card p-4 shadow-soft">
+              <p className="text-body font-medium">
+                Don't call {patient?.name ?? "this patient"}?
+              </p>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                It comes off the queue and won't ring at{" "}
+                {formatTime(task.scheduledAt)}. You can put it back afterwards.
+              </p>
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={() => void setCancelled(true)}
+                  className="rounded-xl bg-secondary px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary/70"
+                >
+                  Decline this call
+                </button>
+                <button
+                  onClick={() => setDeclining(false)}
+                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  Keep it
+                </button>
+              </div>
+            </div>
           ) : (
-            <button
-              onClick={() => setDispatch({ state: "confirming" })}
-              disabled={dispatch.state === "dialling"}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
-            >
-              <PhoneCall className="h-4 w-4" aria-hidden />
-              {dispatch.state === "dialling" ? "Dialling…" : "Call now"}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setDispatch({ state: "confirming" })}
+                disabled={dispatch.state === "dialling"}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+              >
+                <PhoneCall className="h-4 w-4" aria-hidden />
+                {dispatch.state === "dialling" ? "Dialling…" : "Call now"}
+              </button>
+              <button
+                onClick={() => setDeclining(true)}
+                disabled={dispatch.state === "dialling"}
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-60"
+              >
+                <X className="h-4 w-4" aria-hidden />
+                Decline
+              </button>
+            </div>
           )}
 
           {dispatch.state === "failed" && (
@@ -158,6 +205,28 @@ function CallPage() {
             </div>
           )}
         </div>
+      )}
+
+      {task.status === "cancelled" && (
+        <div className="mt-6 max-w-md rounded-xl border border-border bg-secondary p-4">
+          <p className="text-body font-medium">You declined this call</p>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Nobody was rung, and it won't ring on its own. The questions are still below.
+          </p>
+          <button
+            onClick={() => void setCancelled(false)}
+            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-soft transition-colors hover:bg-background"
+          >
+            <Undo2 className="h-4 w-4" aria-hidden />
+            Put it back in the queue
+          </button>
+        </div>
+      )}
+
+      {declineError && (
+        <p role="alert" className="mt-3 max-w-md rounded-xl bg-flag-surface px-4 py-3 text-sm text-flag">
+          {declineError}
+        </p>
       )}
 
       {task.summary && (

@@ -5,6 +5,7 @@ export const statusLabel: Record<CallTask["status"], string> = {
   calling: "On call",
   completed: "Done",
   failed: "No answer",
+  cancelled: "Declined",
 };
 
 /**
@@ -30,6 +31,8 @@ export function StatusDot({
         ? "bg-flag"
         : status === "completed"
           ? "bg-done"
+          // Declined and queued share the quiet dot. A call the doctor called
+          // off is not a fault, so it must not borrow the colour of one.
           : "bg-muted-foreground/40";
   return (
     <span

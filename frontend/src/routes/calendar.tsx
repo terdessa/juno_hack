@@ -137,7 +137,14 @@ function CalendarPage() {
                   {formatTime(t.scheduledAt)}
                 </span>
               </div>
-              <div className="mt-0.5 truncate text-micro font-medium">
+              {/* Struck through rather than removed: the doctor decided this
+                  one wasn't needed, and seeing that decision in the week is
+                  more use than a gap where it used to be. */}
+              <div
+                className={`mt-0.5 truncate text-micro font-medium ${
+                  t.status === "cancelled" ? "text-muted-foreground line-through" : ""
+                }`}
+              >
                 {patientById(t.patientId)?.name ?? "Unknown patient"}
               </div>
             </Link>
