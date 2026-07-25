@@ -13,7 +13,7 @@ this says *how*, with the exact tools, models, contracts and logic.
 | API runtime | **Supabase Edge Functions** (Deno, TypeScript) | Already using Supabase for data; one deploy target, no separate server to host. Anthropic/OpenAI SDKs work in Deno. |
 | Database | **Supabase Postgres** | Sponsor tool. Realtime subscriptions give the live dashboard update for free — no polling code. |
 | Frontend hosting | **Vercel** | Sponsor tool. Lovable output is a React SPA; Vercel is the zero-config host for it. |
-| Copilot LLM | **Claude Sonnet 5** (`claude-sonnet-5`) | Anthropic credits. Strong multi-step tool use — the copilot is a tool loop, not a one-shot extractor. |
+| Dashboard agent LLM | **Claude Haiku 4.5** (`claude-haiku-4-5`) | Anthropic credits. Fastest of the family, and the agent sits on the interactive path where the doctor is watching. Note it predates adaptive thinking and `effort` — sending either returns a 400. |
 | Voice → text (doctor's mic) | **OpenAI `gpt-4o-transcribe`** | OpenAI credits. More robust in a noisy hackathon venue than browser Web Speech API, and not Chrome-locked. |
 | Post-call extraction | **Claude Sonnet 5**, structured output | Owned by Plan 2, but writes into this schema — listed here so the contract is in one place. |
 | Patient call voice | **ElevenLabs Conversational AI** | Sponsor tool. Owns the whole live audio path (see Plan 2). |

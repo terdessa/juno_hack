@@ -16,9 +16,10 @@ import { executeTool, TOOL_DEFINITIONS, type UiAction } from "./tools.ts";
 
 /** Enough for look-up → read record → act, with headroom. */
 const MAX_ITERATIONS = 8;
-const MODEL = "claude-opus-5";
+// Haiku 4.5: fastest of the family. It predates adaptive thinking and the
+// effort parameter — sending either returns a 400, so neither appears below.
+const MODEL = "claude-haiku-4-5";
 const MAX_TOKENS = 4096;
-const EFFORT = "low";
 const TIMEZONE = "Europe/London";
 const DOCTOR_NAME = "Dr Hartley";
 /** Keeps the prompt bounded on a long clinic-day conversation. */
@@ -117,9 +118,6 @@ async function converse(
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      // Thinking stays on: disabled, Opus 5 can write a tool call as plain
-      // text, which in a loop like this silently does nothing.
-      output_config: { effort: EFFORT },
       system,
       tools: TOOL_DEFINITIONS,
       messages,
