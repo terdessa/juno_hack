@@ -77,13 +77,18 @@ export type Database = {
       bookings: {
         Row: {
           id: string;
-          patient_id: string;
+          patient_id: string | null;
           task_id: string | null;
           calendar_event_id: string | null;
           start_at: string;
           end_at: string;
           reason: string | null;
           kind: string;
+          source: string;
+          external_id: string | null;
+          invitee_name: string | null;
+          invitee_email: string | null;
+          status: string;
           created_at: string;
         };
         Insert: {

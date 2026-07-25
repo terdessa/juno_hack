@@ -75,13 +75,19 @@ export type AppointmentKind =
 
 export interface Appointment {
   id: string;
-  patientId: string;
+  /** Null when a Calendly invitee didn't match anyone on the list. */
+  patientId: string | null;
   startAt: string;
   endAt: string;
   reason: string | null;
   kind: AppointmentKind;
   /** Set when Medley booked this off the back of a call. */
   fromTaskId: string | null;
+  /** Where the booking came from: the clinic's own diary, or Calendly. */
+  source: "clinic" | "calendly";
+  status: "confirmed" | "cancelled";
+  /** Calendly's name for the invitee. The fallback when patientId is null. */
+  inviteeName: string | null;
 }
 
 /**

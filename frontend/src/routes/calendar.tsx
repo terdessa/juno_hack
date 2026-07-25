@@ -165,30 +165,66 @@ function CalendarPage() {
           days={clinicDays}
           loading={loading}
           emptyLabel="Clear"
-          renderItem={(a: Appointment) => (
-            <Link
-              to="/patients/$patientId"
-              params={{ patientId: a.patientId }}
-              className="block rounded-lg px-2 py-1.5 transition-colors hover:bg-accent max-sm:py-2.5"
-            >
-              <div className="flex items-center gap-1.5">
-                {/* No status dot: an appointment in the diary has no state to
-                    report. Colour on this page means a call's condition. */}
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {formatTime(a.startAt)}
-                </span>
-                {a.kind === "home-visit" && (
-                  <span className="text-xs text-muted-foreground">· visit</span>
+          renderItem={(a: Appointment) => {
+            const cancelled = a.status === "cancelled";
+            // A Calendly invitee we couldn't match to a patient still belongs
+            // in the diary — under their own name, and without a link into a
+            // record that isn't theirs.
+            const patient = a.patientId ? patientById(a.patientId) : undefined;
+            const who = patient?.name ?? a.inviteeName ?? "Unknown patient";
+
+            const body = (
+              <>
+                <div className="flex items-center gap-1.5">
+                  {/* No status dot: an appointment in the diary has no state to
+                      report. Colour on this page means a call's condition. */}
+                  <span
+                    className={`text-xs tabular-nums text-muted-foreground ${
+                      cancelled ? "line-through" : ""
+                    }`}
+                  >
+                    {formatTime(a.startAt)}
+                  </span>
+                  {a.kind === "home-visit" && (
+                    <span className="text-xs text-muted-foreground">· visit</span>
+                  )}
+                  {a.source === "calendly" && !cancelled && (
+                    <span
+                      title="Booked on the call"
+                      className="text-xs text-muted-foreground"
+                      aria-label="Booked on the call"
+                    >
+                      · booked
+                    </span>
+                  )}
+                </div>
+                <div
+                  className={`mt-0.5 truncate text-micro font-medium ${
+                    cancelled ? "text-muted-foreground line-through" : ""
+                  }`}
+                >
+                  {who}
+                </div>
+                {a.reason && (
+                  <div className="truncate text-xs text-muted-foreground">
+                    {cancelled ? "Cancelled" : a.reason}
+                  </div>
                 )}
-              </div>
-              <div className="mt-0.5 truncate text-micro font-medium">
-                {patientById(a.patientId)?.name ?? "Unknown patient"}
-              </div>
-              {a.reason && (
-                <div className="truncate text-xs text-muted-foreground">{a.reason}</div>
-              )}
-            </Link>
-          )}
+              </>
+            );
+
+            return patient ? (
+              <Link
+                to="/patients/$patientId"
+                params={{ patientId: patient.id }}
+                className="block rounded-lg px-2 py-1.5 transition-colors hover:bg-accent max-sm:py-2.5"
+              >
+                {body}
+              </Link>
+            ) : (
+              <div className="rounded-lg px-2 py-1.5">{body}</div>
+            );
+          }}
         />
       </section>
 

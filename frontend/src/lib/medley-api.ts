@@ -135,7 +135,9 @@ const APPOINTMENT_KINDS: AppointmentKind[] = [
 export async function fetchAppointments(): Promise<Appointment[]> {
   const { data, error } = await supabase
     .from("bookings")
-    .select("id, patient_id, task_id, start_at, end_at, reason, kind")
+    .select(
+      "id, patient_id, task_id, start_at, end_at, reason, kind, source, status, invitee_name",
+    )
     .order("start_at", { ascending: true });
   if (error) throw error;
 
@@ -151,6 +153,9 @@ export async function fetchAppointments(): Promise<Appointment[]> {
       ? (row.kind as AppointmentKind)
       : "appointment",
     fromTaskId: row.task_id,
+    source: row.source === "calendly" ? "calendly" : "clinic",
+    status: row.status === "cancelled" ? "cancelled" : "confirmed",
+    inviteeName: row.invitee_name,
   }));
 }
 
