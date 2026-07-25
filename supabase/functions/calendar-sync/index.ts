@@ -17,7 +17,7 @@
  */
 
 import { createClient, SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { createEvent, listEvents, type GoogleEvent } from "../_shared/google.ts";
+import { calendarId, createEvent, listEvents } from "../_shared/google.ts";
 
 const SYNC_TOKEN_KEY = "google_calendar_sync_token";
 /** One cron tick shouldn't try to backfill a year of bookings. */
@@ -68,6 +68,8 @@ async function pull(db: SupabaseClient) {
 
   let written = 0;
   let cancelled = 0;
+  let skipped = 0;
+  let lastError: string | null = null;
 
   for (const event of result.events) {
     // All-day events have `date` rather than `dateTime`. They are not clinic
@@ -88,7 +90,10 @@ async function pull(db: SupabaseClient) {
       continue;
     }
 
-    if (!startAt || !endAt) continue;
+    if (!startAt || !endAt) {
+      skipped++;
+      continue;
+    }
 
     const attendee = event.attendees?.[0];
     const patientId = await matchPatient(db, attendee?.displayName ?? null, attendee?.email ?? null);
@@ -112,13 +117,39 @@ async function pull(db: SupabaseClient) {
       // One bad event must not abandon the rest, and must not advance the sync
       // token past changes we haven't stored.
       console.error("booking upsert failed", event.id, error.message);
+      lastError = error.message;
+      skipped++;
       continue;
     }
     written++;
   }
 
-  if (result.nextSyncToken) await writeSyncToken(db, result.nextSyncToken);
-  return { pulled: written, cancelled, resynced: result.expired };
+  // Advance Google's cursor only if we actually stored everything it sent.
+  // A syncToken is a promise that we have the previous batch; saving one after
+  // a failure loses those events permanently, because incremental sync sends
+  // each change exactly once. An all-day event that we skip on purpose is not
+  // a failure and must not block the cursor.
+  //
+  // ponytail: a permanently-failing event will now re-fetch the same batch
+  // every two minutes rather than being skipped. Loud and cheap beats silent
+  // and lossy; add a per-event dead-letter if it ever actually happens.
+  if (result.nextSyncToken && !lastError) {
+    await writeSyncToken(db, result.nextSyncToken);
+  } else if (lastError) {
+    console.error("holding sync token back after a failed batch", lastError);
+  }
+  // `fetched` vs `pulled` is the difference between "Google sent us nothing"
+  // and "Google sent us events we then failed to store" — two very different
+  // bugs that look identical from a count of rows written.
+  return {
+    fetched: result.events.length,
+    pulled: written,
+    skipped,
+    cancelled,
+    resynced: result.expired,
+    calendar: calendarId(),
+    lastError,
+  };
 }
 
 /** Here -> Google. Anything with no event id yet. */
