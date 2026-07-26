@@ -8,19 +8,22 @@
  * Deliberately does not attempt to parse a dose or frequency out of free-text
  * notes and speak it as an instruction. A voice agent inventing "take two
  * tablets twice a day" from a note that doesn't actually say that is a real
- * safety risk, not a rounding error. So this reads back what the record
- * literally says and always closes with the same caveat: check the label or
- * ring the surgery for anything the patient needs to act on. Same shape as
+ * safety risk, not a rounding error. So this reads back the medication list
+ * and nothing else, and always closes with the same caveat: check the label
+ * or ring the surgery for anything the patient needs to act on. Same shape as
  * book-appointment — everything returned is written to be spoken aloud.
+ *
+ * `notes` is deliberately NOT read out. It is a doctor-facing field and it
+ * contains things that are not the patient's to hear from an unsupervised
+ * machine: unconfirmed differentials ("suspected reflux-related cough"),
+ * results still pending, observations about how they live. Reading it back
+ * verbatim would have the agent communicating a diagnosis on the phone, which
+ * its own prompt forbids in the same breath — and it is the larger version of
+ * exactly the risk this function was written to avoid.
  */
 
 import { createClient, SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
-
-/** Notes are a free-text clinical field, not written to be read aloud in
- * full. Long enough to carry the relevant line, short enough not to turn
- * into a monologue on the phone. */
-const MAX_NOTES_CHARS = 300;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -80,7 +83,7 @@ async function lookup(
   // match by construction — same reasoning as book-appointment.
   const { data: patient } = await db
     .from("patients")
-    .select("medications, notes")
+    .select("medications")
     .eq("status", "active")
     .ilike("name", args.patient_name.trim())
     .maybeSingle();
@@ -93,9 +96,8 @@ async function lookup(
   }
 
   const medications = asStringList(patient.medications);
-  const notes = typeof patient.notes === "string" ? patient.notes.trim() : "";
 
-  if (!medications.length && !notes) {
+  if (!medications.length) {
     return {
       ok: false,
       spoken: "I don't have medication details on file for you — please check your prescription label or call the surgery to confirm.",
@@ -103,12 +105,7 @@ async function lookup(
   }
 
   const parts: string[] = [];
-  if (medications.length) {
-    parts.push(`Your record shows you're currently on: ${medications.join(", ")}.`);
-  }
-  if (notes) {
-    parts.push(`The doctor's note on file says: ${truncate(notes, MAX_NOTES_CHARS)}.`);
-  }
+  parts.push(`Your record shows you're currently on: ${medications.join(", ")}.`);
   parts.push(
     "For the exact dose and timing, it's best to double-check your prescription label or call the surgery to confirm.",
   );
@@ -121,14 +118,6 @@ function asStringList(value: unknown): string[] {
   return value
     .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
     .map((v) => v.trim());
-}
-
-/** Cuts at a word boundary rather than mid-word, since this gets read aloud. */
-function truncate(text: string, max: number): string {
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max);
-  const lastSpace = cut.lastIndexOf(" ");
-  return `${cut.slice(0, lastSpace > 0 ? lastSpace : max)}…`;
 }
 
 function requireEnv(name: string): string {

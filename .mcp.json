@@ -5,8 +5,10 @@
       "url": "https://mcp.supabase.com/mcp?project_ref=czfjwmzwkifgozkmlsaa&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching"
     },
     "elevenlabs": {
-      "command": "C:\\Users\\stast\\AppData\\Roaming\\Python\\Python314\\Scripts\\uvx.exe",
-      "args": ["elevenlabs-mcp"],
+      "command": "uvx",
+      "args": [
+        "elevenlabs-mcp"
+      ],
       "env": {
         "ELEVENLABS_API_KEY": "${ELEVENLABS_API_KEY}"
       }
