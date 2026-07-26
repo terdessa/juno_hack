@@ -36,17 +36,17 @@ export function WeekGrid<T>({
           className={`min-h-32 p-3 ${isToday ? "bg-secondary" : "bg-card"}`}
         >
           <div className="flex items-baseline gap-1.5">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="text-micro font-medium uppercase tracking-wide text-muted-foreground">
               {DAY_NAMES[(date.getDay() + 6) % 7]}
             </span>
             <span
-              className={`text-sm tabular-nums ${
+              className={`text-body tabular-nums ${
                 isToday ? "font-semibold text-foreground" : "text-muted-foreground"
               }`}
             >
               {date.getDate()}
             </span>
-            {isToday && <span className="text-xs text-muted-foreground">Today</span>}
+            {isToday && <span className="text-micro text-muted-foreground">Today</span>}
           </div>
 
           {loading ? (
@@ -55,7 +55,7 @@ export function WeekGrid<T>({
               <span className="block h-3 w-24 animate-pulse rounded bg-muted motion-reduce:animate-none" />
             </div>
           ) : items.length === 0 ? (
-            emptyLabel && <p className="mt-2 text-xs text-muted-foreground/70">{emptyLabel}</p>
+            emptyLabel && <p className="mt-2 text-micro text-muted-foreground">{emptyLabel}</p>
           ) : (
             <ul className="mt-2 space-y-1.5">
               {items.map((item, i) => (

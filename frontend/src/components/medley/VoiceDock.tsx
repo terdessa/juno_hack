@@ -32,6 +32,7 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const dragging = useRef<{ dx: number; dy: number } | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLElement>(null);
 
   const {
     messages,
@@ -60,6 +61,32 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
   }, [messages, streaming, partial]);
+
+  // ⌘K opened a window and left the cursor behind it, so reaching the composer
+  // of the thing you just summoned meant tabbing through the whole page. On a
+  // product whose premise is that speaking beats filling in, the headline
+  // shortcut was mouse-only.
+  useEffect(() => {
+    const field = panel.current?.querySelector<HTMLTextAreaElement>("textarea");
+    field?.focus();
+  }, []);
+
+  // Escape closes it, and focus goes back to the rail button that opened it —
+  // otherwise closing drops the keyboard user at the top of the document.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      // Not while a confirm is open inside it; Escape should back out of the
+      // innermost thing first.
+      e.stopPropagation();
+      reset();
+      closeDock();
+      document.querySelector<HTMLButtonElement>("[data-dock-toggle]")?.focus();
+    };
+    const node = panel.current;
+    node?.addEventListener("keydown", onKey);
+    return () => node?.removeEventListener("keydown", onKey);
+  }, [reset]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!pos) return;
@@ -107,6 +134,10 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
 
   return (
     <section
+      ref={panel}
+      // A non-modal dialog: `role="dialog"` without `aria-modal`, because
+      // nothing behind it is inert and that is the whole point of the thing.
+      role="dialog"
       aria-label="Medley"
       style={{
         zIndex: "var(--z-palette)",
@@ -143,6 +174,7 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
           onClick={() => {
             reset();
             closeDock();
+            document.querySelector<HTMLButtonElement>("[data-dock-toggle]")?.focus();
           }}
           aria-label="Close Medley"
           className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"

@@ -4,10 +4,11 @@ import { ArrowLeft, PhoneCall, Trash2, Undo2, X } from "lucide-react";
 import { MedleyProvider } from "@/lib/medley-store";
 import { useMedleyStore } from "@/lib/medley-context";
 import { Shell } from "@/components/medley/Shell";
-import { MoodBadge, StatusDot, statusLabel } from "@/components/medley/status";
+import { MoodBadge, StatusDot, statusText } from "@/components/medley/status";
 import { DetailSkeleton } from "@/components/medley/loading";
 import { runTask, taskAction } from "@/lib/medley-api";
-import { formatDate, formatDuration, formatTime } from "@/lib/format";
+import { isOverdue } from "@/lib/overdue";
+import { formatDate, formatDuration, formatRelative, formatTime } from "@/lib/format";
 
 export const Route = createFileRoute("/calls/$taskId")({
   head: () => ({ meta: [{ title: "Call · Medley" }] }),
@@ -101,22 +102,27 @@ function CallPage() {
     <article className="mx-auto max-w-2xl">
       <Link
         to="/calls"
-        className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        className="mb-8 inline-flex items-center gap-1.5 text-body text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" /> Calls
       </Link>
 
       <div className="flex items-center gap-2.5">
-        <StatusDot status={task.status} />
-        <span className="text-sm font-medium text-muted-foreground">
-          {statusLabel[task.status]}
+        <StatusDot status={task.status} scheduledAt={task.scheduledAt} />
+        <span
+          className={`text-body font-medium ${
+            isOverdue(task) ? "text-overdue" : "text-muted-foreground"
+          }`}
+        >
+          {statusText(task)}
+          {isOverdue(task) && ` · due ${formatRelative(task.scheduledAt)}`}
         </span>
         {task.mood && <MoodBadge mood={task.mood} />}
       </div>
 
       <h1 className="mt-3 text-2xl leading-tight tracking-tight">{task.purpose}</h1>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-body text-muted-foreground">
         {patient && (
           <Link
             to="/patients/$patientId"
@@ -132,7 +138,7 @@ function CallPage() {
         {task.durationSec != null && <span>{formatDuration(task.durationSec)}</span>}
       </div>
 
-      {task.status === "queued" && (
+      {(task.status === "queued" || task.status === "failed") && (
         <div className="mt-6">
           {dispatch.state === "confirming" ? (
             /* Inline rather than a modal: the doctor can still read the
@@ -142,7 +148,7 @@ function CallPage() {
                 Ring {patient?.name ?? "this patient"}
                 {patient?.phone ? ` on ${patient.phone}` : ""} now?
               </p>
-              <p className="mt-1.5 text-sm text-muted-foreground">
+              <p className="mt-1.5 text-body text-muted-foreground">
                 Their phone rings straight away
                 {questionCount > 0
                   ? `, and Medley asks ${questionCount} question${questionCount === 1 ? "" : "s"}.`
@@ -151,13 +157,13 @@ function CallPage() {
               <div className="mt-4 flex gap-2">
                 <button
                   onClick={() => void placeCall()}
-                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-body font-medium text-primary-foreground transition-opacity hover:opacity-90"
                 >
                   <PhoneCall className="h-4 w-4" aria-hidden /> Yes, ring now
                 </button>
                 <button
                   onClick={() => setDispatch({ state: "idle" })}
-                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  className="rounded-xl px-4 py-2.5 text-body font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                 >
                   Cancel
                 </button>
@@ -171,31 +177,31 @@ function CallPage() {
               <p className="text-body font-medium">
                 Don't call {patient?.name ?? "this patient"}?
               </p>
-              <p className="mt-1.5 text-sm text-muted-foreground">
+              <p className="mt-1.5 text-body text-muted-foreground">
                 It comes off the queue and won't ring at{" "}
                 {formatTime(task.scheduledAt)}. You can put it back afterwards.
               </p>
               <div className="mt-4 flex gap-2">
                 <button
                   onClick={() => void setCancelled(true)}
-                  className="rounded-xl bg-secondary px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary/70"
+                  className="rounded-xl bg-secondary px-4 py-2.5 text-body font-medium text-foreground transition-colors hover:bg-secondary/70"
                 >
                   Decline this call
                 </button>
                 <button
                   onClick={() => setDeclining(false)}
-                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  className="rounded-xl px-4 py-2.5 text-body font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                 >
                   Keep it
                 </button>
               </div>
             </div>
-          ) : (
+          ) : task.status === "failed" ? null : (
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setDispatch({ state: "confirming" })}
                 disabled={dispatch.state === "dialling"}
-                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-body font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
               >
                 <PhoneCall className="h-4 w-4" aria-hidden />
                 {dispatch.state === "dialling" ? "Dialling…" : "Call now"}
@@ -203,7 +209,7 @@ function CallPage() {
               <button
                 onClick={() => setDeclining(true)}
                 disabled={dispatch.state === "dialling"}
-                className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-body font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-60"
               >
                 <X className="h-4 w-4" aria-hidden />
                 Decline
@@ -213,12 +219,12 @@ function CallPage() {
 
           {dispatch.state === "failed" && (
             <div role="alert" className="mt-3 max-w-md rounded-xl bg-flag-surface px-4 py-3">
-              <p className="text-sm text-flag">
+              <p className="text-body text-flag">
                 The call didn't start, so nobody has been rung. {dispatch.message}
               </p>
               <button
                 onClick={() => setDispatch({ state: "confirming" })}
-                className="mt-1.5 text-sm font-medium text-foreground underline underline-offset-4"
+                className="mt-1.5 text-body font-medium text-foreground underline underline-offset-4"
               >
                 Try again
               </button>
@@ -227,15 +233,35 @@ function CallPage() {
         </div>
       )}
 
+      {task.status === "failed" && (
+        <div className="mt-6 max-w-md rounded-xl border border-border bg-flag-surface p-4">
+          <p className="text-body font-medium text-flag">This call didn't happen</p>
+          {/* The stored reason, verbatim. "Didn't get through" covers a patient
+              who ignored the phone and a number that was never diallable, and
+              only one of those is the patient's doing — the doctor needs to
+              know which before deciding what to do about it. */}
+          <p className="mt-1.5 text-body text-muted-foreground">
+            {task.error ?? "Nobody answered, or the line didn't connect."}
+          </p>
+          <button
+            onClick={() => setDispatch({ state: "confirming" })}
+            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-card px-4 py-2.5 text-body font-medium text-foreground shadow-soft transition-colors hover:bg-background"
+          >
+            <PhoneCall className="h-4 w-4" aria-hidden />
+            Try again
+          </button>
+        </div>
+      )}
+
       {task.status === "cancelled" && (
         <div className="mt-6 max-w-md rounded-xl border border-border bg-secondary p-4">
           <p className="text-body font-medium">You declined this call</p>
-          <p className="mt-1.5 text-sm text-muted-foreground">
+          <p className="mt-1.5 text-body text-muted-foreground">
             Nobody was rung, and it won't ring on its own. The questions are still below.
           </p>
           <button
             onClick={() => void setCancelled(false)}
-            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-soft transition-colors hover:bg-background"
+            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-card px-4 py-2.5 text-body font-medium text-foreground shadow-soft transition-colors hover:bg-background"
           >
             <Undo2 className="h-4 w-4" aria-hidden />
             Put it back in the queue
@@ -244,7 +270,7 @@ function CallPage() {
       )}
 
       {declineError && (
-        <p role="alert" className="mt-3 max-w-md rounded-xl bg-flag-surface px-4 py-3 text-sm text-flag">
+        <p role="alert" className="mt-3 max-w-md rounded-xl bg-flag-surface px-4 py-3 text-body text-flag">
           {declineError}
         </p>
       )}
@@ -256,8 +282,8 @@ function CallPage() {
         <div className="mt-12 border-t border-border pt-5">
           {deleting ? (
             <div className="max-w-md">
-              <p className="text-sm font-medium">Delete this call for good?</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="text-body font-medium">Delete this call for good?</p>
+              <p className="mt-1 text-body text-muted-foreground">
                 The questions and anything the patient said go with it. Declining keeps the
                 record; this doesn't.
               </p>
@@ -265,13 +291,13 @@ function CallPage() {
                 <button
                   onClick={() => void remove()}
                   disabled={removing}
-                  className="rounded-xl bg-flag px-4 py-2.5 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-60"
+                  className="rounded-xl bg-flag px-4 py-2.5 text-body font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-60"
                 >
                   {removing ? "Deleting…" : "Delete permanently"}
                 </button>
                 <button
                   onClick={() => setDeleting(false)}
-                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  className="rounded-xl px-4 py-2.5 text-body font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                 >
                   Keep it
                 </button>
@@ -280,7 +306,7 @@ function CallPage() {
           ) : (
             <button
               onClick={() => setDeleting(true)}
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-flag"
+              className="inline-flex items-center gap-2 text-body text-muted-foreground transition-colors hover:text-flag"
             >
               <Trash2 className="h-4 w-4" aria-hidden />
               Delete this call

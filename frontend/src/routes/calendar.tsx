@@ -4,9 +4,10 @@ import { ChevronLeft, ChevronRight, Phone, User, X } from "lucide-react";
 import { MedleyProvider } from "@/lib/medley-store";
 import { useMedleyStore } from "@/lib/medley-context";
 import { Shell } from "@/components/medley/Shell";
-import { StatusDot } from "@/components/medley/status";
+import { StatusDot, StatusKey, statusText } from "@/components/medley/status";
 import { WeekGrid, type WeekDay } from "@/components/medley/WeekGrid";
 import { deleteAppointment } from "@/lib/medley-api";
+import { isOverdue } from "@/lib/overdue";
 import { dayKey, formatTime } from "@/lib/format";
 import type { Appointment, CallTask } from "@/lib/types";
 
@@ -108,7 +109,7 @@ function CalendarPage() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl tracking-tight">Calendar</h1>
-          <p className="mt-1 text-sm tabular-nums text-muted-foreground">{label}</p>
+          <p className="mt-1 text-micro tabular-nums text-muted-foreground">{label}</p>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -120,7 +121,7 @@ function CalendarPage() {
           </button>
           <button
             onClick={() => setWeekStart(startOfWeek(new Date()))}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground max-sm:min-h-11"
+            className="rounded-lg px-3 py-2 text-body font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground max-sm:min-h-11"
           >
             Today
           </button>
@@ -135,10 +136,12 @@ function CalendarPage() {
       </div>
 
       {error && (
-        <p role="alert" className="mb-4 rounded-xl bg-flag-surface px-4 py-3 text-sm text-flag">
+        <p role="alert" className="mb-4 rounded-xl bg-flag-surface px-4 py-3 text-body text-flag">
           {error}
         </p>
       )}
+
+      <StatusKey className="mb-5" />
 
       <section aria-labelledby="cal-medley">
         <CalendarHeading
@@ -160,10 +163,20 @@ function CalendarPage() {
               className="block rounded-lg px-2 py-1.5 transition-colors hover:bg-accent max-sm:py-2.5"
             >
               <div className="flex items-center gap-1.5">
-                <StatusDot status={t.status} />
-                <span className="text-xs tabular-nums text-muted-foreground">
+                <StatusDot status={t.status} scheduledAt={t.scheduledAt} described={false} />
+                <span className="text-micro tabular-nums text-muted-foreground">
                   {formatTime(t.scheduledAt)}
                 </span>
+              </div>
+              {/* The rows on /calls carry the status word; these cells didn't,
+                  so the densest, most glanceable view was the one place a dot
+                  had to be interpreted from colour alone. */}
+              <div
+                className={`truncate text-micro ${
+                  isOverdue(t) ? "font-medium text-overdue" : "text-muted-foreground"
+                }`}
+              >
+                {statusText(t)}
               </div>
               {/* Struck through rather than removed: the doctor decided this
                   one wasn't needed, and seeing that decision in the week is
@@ -208,18 +221,18 @@ function CalendarPage() {
             if (confirming === a.id) {
               return (
                 <div className="rounded-lg bg-secondary px-2 py-1.5">
-                  <p className="text-xs leading-snug">Remove from both calendars?</p>
+                  <p className="text-micro leading-snug">Remove from both calendars?</p>
                   <div className="mt-1.5 flex gap-1">
                     <button
                       onClick={() => void removeAppointment(a.id)}
                       disabled={pending === a.id}
-                      className="rounded-md bg-card px-2 py-1 text-xs font-medium shadow-soft disabled:opacity-60"
+                      className="rounded-md bg-card px-2 py-1 text-micro font-medium shadow-soft disabled:opacity-60"
                     >
                       {pending === a.id ? "Removing…" : "Remove"}
                     </button>
                     <button
                       onClick={() => setConfirming(null)}
-                      className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                      className="rounded-md px-2 py-1 text-micro text-muted-foreground hover:text-foreground"
                     >
                       Keep
                     </button>
@@ -233,21 +246,21 @@ function CalendarPage() {
                 <div className="flex items-center gap-1.5">
                   {/* No status dot: an appointment in the diary has no state to
                       report. Colour on this page means a call's condition. */}
-                  <span className="text-xs tabular-nums text-muted-foreground">
+                  <span className="text-micro tabular-nums text-muted-foreground">
                     {formatTime(a.startAt)}
                   </span>
                   {a.kind === "home-visit" && (
-                    <span className="text-xs text-muted-foreground">· visit</span>
+                    <span className="text-micro text-muted-foreground">· visit</span>
                   )}
                   {a.source === "google" && (
-                    <span className="text-xs text-muted-foreground" title="From your Google Calendar">
+                    <span className="text-micro text-muted-foreground" title="From your Google Calendar">
                       · Google
                     </span>
                   )}
                 </div>
                 <div className="mt-0.5 truncate text-micro font-medium">{who}</div>
                 {reason && (
-                  <div className="truncate text-xs text-muted-foreground">{reason}</div>
+                  <div className="truncate text-micro text-muted-foreground">{reason}</div>
                 )}
               </>
             );
@@ -283,12 +296,12 @@ function CalendarPage() {
       {!loading && callCount === 0 && clinicCount === 0 && (
         <div className="py-10 text-center">
           <p className="text-body font-medium">Nothing scheduled this week</p>
-          <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
+          <p className="mx-auto mt-1.5 max-w-sm text-body leading-relaxed text-muted-foreground">
             Follow-ups appear here as soon as you ask Medley to arrange one.
           </p>
           <Link
             to="/"
-            className="mt-4 inline-block rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            className="mt-4 inline-block rounded-xl bg-primary px-4 py-2.5 text-body font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
             Ask Medley
           </Link>
@@ -325,14 +338,14 @@ function CalendarHeading({
 }) {
   return (
     <div className="mb-2.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-      <h2 id={id} className="flex items-center gap-1.5 text-sm font-medium">
+      <h2 id={id} className="flex items-center gap-1.5 text-body font-medium">
         <span className="text-muted-foreground">{icon}</span>
         {title}
       </h2>
-      <span className="text-xs tabular-nums text-muted-foreground">
+      <span className="text-micro tabular-nums text-muted-foreground">
         {loading ? "…" : count === 1 ? "1 this week" : `${count} this week`}
       </span>
-      <span className="text-xs text-muted-foreground/70">{note}</span>
+      <span className="text-micro text-muted-foreground">{note}</span>
     </div>
   );
 }

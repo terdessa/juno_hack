@@ -59,13 +59,13 @@ export function VoiceConsole({
     return (
       <div className="rounded-2xl border border-border bg-card px-5 py-6 text-center">
         <p className="text-body font-medium">This browser can't hear you</p>
-        <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
+        <p className="mx-auto mt-1.5 max-w-sm text-body leading-relaxed text-muted-foreground">
           It has no microphone we can reach. Everything works the same typed.
         </p>
         <button
           type="button"
           onClick={onUseText}
-          className="mt-4 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          className="mt-4 rounded-xl bg-primary px-4 py-2.5 text-body font-medium text-primary-foreground transition-opacity hover:opacity-90"
         >
           Type instead
         </button>
@@ -129,7 +129,7 @@ export function VoiceConsole({
           )}
           <span className="text-body font-medium">{copy.status}</span>
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">{copy.hint}</p>
+        <p className="mt-1 text-body text-muted-foreground">{copy.hint}</p>
 
         {partial && (
           <p className="mt-4 max-w-md text-center text-reading text-muted-foreground">{partial}</p>
@@ -138,11 +138,11 @@ export function VoiceConsole({
 
       {error && (
         <div className="mt-5 max-w-md rounded-xl bg-flag-surface px-4 py-3 text-center">
-          <p className="text-sm leading-relaxed text-flag">{error}</p>
+          <p className="text-body leading-relaxed text-flag">{error}</p>
           <button
             type="button"
             onClick={onUseText}
-            className="mt-1.5 text-sm font-medium text-foreground underline underline-offset-4"
+            className="mt-1.5 text-body font-medium text-foreground underline underline-offset-4"
           >
             Type instead
           </button>

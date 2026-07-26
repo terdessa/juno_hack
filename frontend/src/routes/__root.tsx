@@ -24,13 +24,13 @@ function NotFoundComponent() {
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-body font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
             Go to Medley
           </Link>
           <Link
             to="/calls"
-            className="inline-flex items-center justify-center rounded-xl border border-input px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+            className="inline-flex items-center justify-center rounded-xl border border-input px-4 py-2.5 text-body font-medium text-foreground transition-colors hover:bg-secondary"
           >
             See all calls
           </Link>
@@ -41,7 +41,7 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
+  
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
@@ -60,13 +60,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-body font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
             Try again
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-xl border border-input px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+            className="inline-flex items-center justify-center rounded-xl border border-input px-4 py-2.5 text-body font-medium text-foreground transition-colors hover:bg-secondary"
           >
             Go to Medley
           </a>
@@ -115,11 +115,29 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+/**
+ * Applies the dark palette from the system preference, before first paint.
+ *
+ * `styles.css` carried a fully specified `.dark` block — hue-shifted state
+ * colours, re-derived shadows — that nothing ever applied, so fifty lines of
+ * considered work were a maintained fiction. This is the three lines that make
+ * them real. It runs inline in `<head>` rather than in an effect because doing
+ * it after hydration means a white flash first, which is worse than no dark
+ * mode at all for someone reading this at 2am on a night visit.
+ *
+ * An explicit `.light`/`.dark` class still wins, so a future toggle needs no
+ * change here.
+ */
+const APPLY_THEME = `try{var r=document.documentElement;
+if(!r.classList.contains('light')&&!r.classList.contains('dark')&&
+   matchMedia('(prefers-color-scheme: dark)').matches){r.classList.add('dark')}}catch(e){}`;
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: APPLY_THEME }} />
       </head>
       <body>
         {children}

@@ -6,7 +6,9 @@ import { useMedleyStore } from "@/lib/medley-context";
 import { clearConversation } from "@/lib/conversation";
 import { useAgentConversation } from "@/lib/useAgentConversation";
 import { useDockOpen, openDock } from "@/lib/dock";
-import { formatTime } from "@/lib/format";
+import { byUrgency, isOverdue, overdueCount } from "@/lib/overdue";
+import { formatRelative, formatTime } from "@/lib/format";
+import { StatusDot } from "./status";
 import { ModeSwitch, type TalkMode } from "./ModeSwitch";
 import { TextComposer } from "./TextComposer";
 import { VoiceConsole } from "./VoiceConsole";
@@ -104,24 +106,34 @@ export function AgentHome({ onAction }: { onAction: (a: UiAction) => void }) {
     />
   );
 
-  const upNext = tasks.filter((t) => t.status === "queued").slice(0, 3);
+  // Overdue first. "Up next" previously meant "the three the agent happened
+  // to schedule most recently", which put a call that should have gone out on
+  // Tuesday below one due next week.
+  const queued = tasks.filter((t) => t.status === "queued");
+  const upNext = byUrgency(queued).slice(0, 3);
+  const late = overdueCount(queued);
 
   // Fixed height rather than min-height: the transcript is the scroll
   // container, which is what holds the composer at the bottom of the screen.
   if (started) {
     return (
-      <div className="mx-auto flex h-[calc(100vh-8rem)] w-full max-w-3xl flex-col">
+      <div className="mx-auto flex h-[calc(100dvh-9rem)] w-full max-w-3xl flex-col md:h-[calc(100dvh-7rem)]">
         <div className="flex items-center justify-end pb-1">
           <button
             type="button"
             onClick={startOver}
-            className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            className="rounded-lg px-2.5 py-1.5 text-body font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             New conversation
           </button>
         </div>
 
-        <div ref={scroller} className="flex-1 space-y-5 overflow-y-auto py-4">
+        <div
+          ref={scroller}
+          aria-live="polite"
+          aria-atomic="false"
+          className="flex-1 space-y-5 overflow-y-auto py-4"
+        >
           {messages.map((m, i) => (
             <div key={i} className={m.role === "user" ? "flex justify-end" : ""}>
               <span className="sr-only">{m.role === "user" ? "You said" : "Medley replied"}:</span>
@@ -161,7 +173,7 @@ export function AgentHome({ onAction }: { onAction: (a: UiAction) => void }) {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] flex-col">
+    <div className="flex min-h-[calc(100dvh-9rem)] flex-col md:min-h-[calc(100dvh-7rem)]">
       <div className="flex flex-1 flex-col items-center justify-center py-8">
         <h1 className="text-center text-[28px] leading-[1.1] tracking-tight sm:text-[34px]">
           What do you need?
@@ -202,7 +214,17 @@ export function AgentHome({ onAction }: { onAction: (a: UiAction) => void }) {
           Shell, so it survives the conversation starting. */}
       {upNext.length > 0 && (
         <div className="mx-auto w-full max-w-3xl border-t border-border pt-6">
-          <h2 className="mb-1 font-sans text-sm font-medium text-muted-foreground">Up next</h2>
+          <div className="mb-1 flex flex-wrap items-baseline gap-x-2.5">
+            <h2 className="text-body font-medium text-muted-foreground">Up next</h2>
+            {late > 0 && (
+              <span className="text-micro font-medium text-overdue">{late} overdue</span>
+            )}
+            {queued.length > upNext.length && (
+              <Link to="/calls" className="text-micro text-muted-foreground underline underline-offset-4">
+                {queued.length} in all
+              </Link>
+            )}
+          </div>
           <ul className="divide-y divide-border">
             {upNext.map((t) => (
               <li key={t.id}>
@@ -211,13 +233,23 @@ export function AgentHome({ onAction }: { onAction: (a: UiAction) => void }) {
                   params={{ taskId: t.id }}
                   className="flex items-baseline gap-3 py-3 transition-colors hover:text-foreground"
                 >
-                  <span className="w-14 shrink-0 text-sm tabular-nums text-muted-foreground">
+                  <StatusDot
+                    status={t.status}
+                    scheduledAt={t.scheduledAt}
+                    described={false}
+                  />
+                  <span className="w-14 shrink-0 text-micro tabular-nums text-muted-foreground">
                     {formatTime(t.scheduledAt)}
                   </span>
                   <span className="font-medium text-body">
                     {patientById(t.patientId)?.name ?? "—"}
                   </span>
-                  <span className="truncate text-sm text-muted-foreground">{t.purpose}</span>
+                  <span className="truncate text-micro text-muted-foreground">{t.purpose}</span>
+                  {isOverdue(t) && (
+                    <span className="ml-auto shrink-0 text-micro font-medium text-overdue">
+                      {formatRelative(t.scheduledAt)}
+                    </span>
+                  )}
                 </Link>
               </li>
             ))}

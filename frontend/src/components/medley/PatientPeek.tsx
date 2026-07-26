@@ -1,9 +1,11 @@
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Patient } from "@/lib/types";
 
 const CARD_W = 304;
 const CARD_H = 268;
 const GUTTER = 16;
+/** Matches Tailwind's `lg`, which is the breakpoint the card renders at. */
+const PEEK_MIN_WIDTH = 1024;
 
 /**
  * A glance at the record without leaving the list. Opens after a beat so it
@@ -11,16 +13,30 @@ const GUTTER = 16;
  * the click — the row underneath still navigates.
  *
  * Anchored to the row rather than following the cursor: a card that chases the
- * pointer re-renders on every mouse frame and is unreachable by keyboard. This
- * one opens on focus too, and describes the row it belongs to.
+ * pointer re-renders on every mouse frame and is unreachable by keyboard.
+ *
+ * **Deliberately invisible to assistive tech.** It used to set
+ * `aria-describedby` at the wrapper, so every arrow-key move down the list read
+ * out a paragraph — name, age, NHS number, condition, the whole medication
+ * list and three lines of notes — before the row's own text. Worse, below
+ * `lg` the card is `hidden`, so the description pointed at content that was
+ * not rendered at all. A screen-reader user gains nothing from a hover
+ * affordance whose entire content is one Enter press away on the record
+ * itself, so it is now `aria-hidden` and purely visual.
  */
 export function PatientPeek({ patient, children }: { patient: Patient; children: ReactNode }) {
   const [at, setAt] = useState<{ top: number; left: number } | null>(null);
   const wrapper = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const id = useId();
+
+  // Never open below `lg`. Positioning ran and state was set even when the
+  // card could not be seen, which was work for nothing on exactly the devices
+  // with the least to spare.
+  const wideEnough = () =>
+    typeof window !== "undefined" && window.innerWidth >= PEEK_MIN_WIDTH;
 
   const open = () => {
+    if (!wideEnough()) return;
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       const row = wrapper.current?.getBoundingClientRect();
@@ -37,6 +53,24 @@ export function PatientPeek({ patient, children }: { patient: Patient; children:
     setAt(null);
   };
 
+  // A card anchored to a row is wrong the moment the row moves.
+  useEffect(() => {
+    if (!at) return;
+    window.addEventListener("scroll", close, { passive: true });
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close);
+      window.removeEventListener("resize", close);
+    };
+  }, [at]);
+
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
+
   return (
     <div
       ref={wrapper}
@@ -47,18 +81,16 @@ export function PatientPeek({ patient, children }: { patient: Patient; children:
       onKeyDown={(e) => {
         if (e.key === "Escape") close();
       }}
-      aria-describedby={at ? id : undefined}
     >
       {children}
       {at && (
         <div
-          id={id}
-          role="tooltip"
-          className="pointer-events-none fixed z-50 hidden w-76 rounded-xl border border-border bg-popover p-4 shadow-float lg:block"
-          style={{ top: at.top, left: at.left }}
+          aria-hidden
+          style={{ top: at.top, left: at.left, width: CARD_W, zIndex: "var(--z-peek)" }}
+          className="pointer-events-none fixed hidden rounded-xl border border-border bg-popover p-4 shadow-float lg:block"
         >
           <div className="font-medium text-lg leading-tight">{patient.name}</div>
-          <div className="mt-0.5 text-sm text-muted-foreground">
+          <div className="mt-0.5 text-body text-muted-foreground">
             {patient.age} · NHS {patient.nhsNumber}
           </div>
 

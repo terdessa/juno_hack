@@ -87,7 +87,7 @@ export function Shell({ children }: { children: ReactNode }) {
           className="mr-3 flex shrink-0 items-center gap-2.5 rounded-lg px-2 py-1.5 md:mr-0 md:mb-6"
         >
           <Mark className="h-[18px] w-[18px] text-foreground" />
-          <span className="text-[15px] font-semibold tracking-tight">Medley</span>
+          <span className="text-body font-semibold tracking-tight">Medley</span>
         </Link>
 
         <nav className="flex items-center gap-1 md:flex-col md:items-stretch md:gap-0.5">
@@ -137,8 +137,10 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="ml-auto flex items-center gap-2 md:ml-0 md:mt-auto md:flex-col md:items-stretch md:gap-3">
           <button
             type="button"
+            data-dock-toggle
             onClick={toggleDock}
             aria-pressed={dockOpen}
+            aria-expanded={dockOpen}
             className={`hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-micro transition-colors md:flex ${
               dockOpen
                 ? "bg-card text-foreground shadow-soft"

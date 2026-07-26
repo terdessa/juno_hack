@@ -38,7 +38,7 @@ function PatientsPage() {
             type="search"
             placeholder="Search name or condition"
             aria-label="Search patients by name or condition"
-            className="w-full min-w-0 rounded-xl border border-input bg-card py-2.5 pl-9 pr-3 text-sm placeholder:text-muted-foreground sm:w-64"
+            className="w-full min-w-0 rounded-xl border border-input bg-card py-2.5 pl-9 pr-3 text-body placeholder:text-muted-foreground sm:w-64"
           />
         </div>
       </div>
@@ -50,7 +50,7 @@ function PatientsPage() {
           <p className="text-body font-medium">
             {q ? `No patients match “${q}”` : "No patients on your list"}
           </p>
-          <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
+          <p className="mx-auto mt-1.5 max-w-sm text-body leading-relaxed text-muted-foreground">
             {q
               ? "Search matches names and conditions. Check the spelling, or clear the search to see everyone."
               : "Patients appear here once they're registered to your list at the practice."}
@@ -58,7 +58,7 @@ function PatientsPage() {
           {q && (
             <button
               onClick={() => setQ("")}
-              className="mt-4 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+              className="mt-4 rounded-xl bg-primary px-4 py-2.5 text-body font-medium text-primary-foreground transition-opacity hover:opacity-90"
             >
               Clear search
             </button>
@@ -77,11 +77,11 @@ function PatientsPage() {
               >
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-reading leading-snug">{p.name}</div>
-                  <div className="truncate text-sm text-muted-foreground">{p.condition}</div>
+                  <div className="truncate text-body text-muted-foreground">{p.condition}</div>
                 </div>
-                <div className="hidden shrink-0 text-right text-sm text-muted-foreground sm:block">
+                <div className="hidden shrink-0 text-right text-body text-muted-foreground sm:block">
                   <div className="tabular-nums text-foreground">{p.age}</div>
-                  <div className="text-xs">seen {formatRelative(p.lastVisit)}</div>
+                  <div className="text-micro">seen {formatRelative(p.lastVisit)}</div>
                 </div>
               </Link>
             </PatientPeek>

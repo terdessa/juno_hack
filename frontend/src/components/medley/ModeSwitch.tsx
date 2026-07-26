@@ -78,7 +78,7 @@ export function ModeSwitch({
             tabIndex={selected ? 0 : -1}
             disabled={disabled}
             onClick={() => onChange(option.id)}
-            className={`relative z-10 flex h-11 items-center justify-center gap-2 rounded-full text-sm font-medium transition-colors duration-150 disabled:cursor-not-allowed ${
+            className={`relative z-10 flex h-11 items-center justify-center gap-2 rounded-full text-body font-medium transition-colors duration-150 disabled:cursor-not-allowed ${
               selected ? "text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >

@@ -22,7 +22,7 @@ function Field({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
   return (
     <div className="py-2.5">
-      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dt className="text-micro text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 text-body">{value}</dd>
     </div>
   );
@@ -51,7 +51,7 @@ function PatientPage() {
     <article>
       <Link
         to="/patients"
-        className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        className="mb-8 inline-flex items-center gap-1.5 text-body text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" /> Patients
       </Link>
@@ -123,7 +123,7 @@ function PatientPage() {
                     >
                       <StatusDot status={t.status} described={false} />
                       <span className="min-w-0 flex-1 truncate text-body">{t.purpose}</span>
-                      <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                      <span className="shrink-0 text-micro tabular-nums text-muted-foreground">
                         {formatDate(t.scheduledAt)}
                       </span>
                       <span className="shrink-0 text-micro text-muted-foreground">

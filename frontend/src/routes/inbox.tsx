@@ -77,7 +77,7 @@ function InboxPage() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl tracking-tight">Inbox</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-body text-muted-foreground">
             {loading
               ? "Loading…"
               : open.length === 0
@@ -89,7 +89,7 @@ function InboxPage() {
           <button
             onClick={() => setShowDone(!showDone)}
             aria-pressed={showDone}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors max-sm:min-h-11 ${
+            className={`rounded-lg px-3 py-2 text-body font-medium transition-colors max-sm:min-h-11 ${
               showDone
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -101,7 +101,7 @@ function InboxPage() {
       </div>
 
       {error && (
-        <p role="alert" className="mb-4 rounded-xl bg-flag-surface px-4 py-3 text-sm text-flag">
+        <p role="alert" className="mb-4 rounded-xl bg-flag-surface px-4 py-3 text-body text-flag">
           {error}
         </p>
       )}
@@ -113,7 +113,7 @@ function InboxPage() {
           <p className="text-body font-medium">
             {showDone ? "Nothing cleared yet" : "Nothing needs you"}
           </p>
-          <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
+          <p className="mx-auto mt-1.5 max-w-sm text-body leading-relaxed text-muted-foreground">
             {showDone
               ? "Things you mark done or dismiss are kept here."
               : "When a call turns up something that needs a person — a prescription that's run out, a symptom, a request to be seen — it lands here. Routine calls don't."}
@@ -161,7 +161,7 @@ function InboxPage() {
               <p className="mt-1.5 font-medium text-reading leading-snug">{item.title}</p>
 
               {item.detail && (
-                <p className="mt-1 max-w-[68ch] text-sm leading-relaxed text-muted-foreground">
+                <p className="mt-1 max-w-[68ch] text-body leading-relaxed text-muted-foreground">
                   “{item.detail}”
                 </p>
               )}
@@ -171,7 +171,7 @@ function InboxPage() {
                   <Link
                     to="/patients/$patientId"
                     params={{ patientId: patient.id }}
-                    className="text-sm font-medium underline underline-offset-4"
+                    className="text-body font-medium underline underline-offset-4"
                   >
                     {patient.name}
                   </Link>
@@ -180,7 +180,7 @@ function InboxPage() {
                   <Link
                     to="/calls/$taskId"
                     params={{ taskId: item.taskId }}
-                    className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                    className="text-body text-muted-foreground underline underline-offset-4 hover:text-foreground"
                   >
                     The call
                   </Link>
