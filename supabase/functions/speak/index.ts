@@ -14,8 +14,16 @@
 import { requireEnv } from "../_shared/dispatch.ts";
 import { z } from "npm:zod@3";
 
-/** The voice the phone agent uses, so Medley sounds like one assistant. */
-const VOICE_ID = "Xb7hH8MSUJpSbSDYk0k2";
+/**
+ * The voice the phone agent uses, so Medley sounds like one assistant.
+ *
+ * Pia — British, middle-aged, and built for healthcare conversation. The
+ * previous voice was "Alice, Clear Engaging Educator", an e-learning
+ * narrator: engineered for consistency, which is the opposite of what a call
+ * to a patient wants. Keep this in step with the agent's `tts.voice_id` or
+ * Medley becomes two different people depending on which end you are on.
+ */
+const VOICE_ID = "ZSdU1uVp8sY2zfAqIxyC";
 const MODEL_ID = "eleven_flash_v2_5";
 const OUTPUT_FORMAT = "mp3_22050_32";
 
@@ -54,7 +62,7 @@ Deno.serve(async (req: Request) => {
         body: JSON.stringify({
           text: parsed.data.text,
           model_id: MODEL_ID,
-          voice_settings: { stability: 0.4, similarity_boost: 0.75, speed: 1.05 },
+          voice_settings: { stability: 0.35, similarity_boost: 0.7, speed: 1.05 },
         }),
       },
     );
