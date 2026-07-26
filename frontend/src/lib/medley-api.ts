@@ -496,3 +496,19 @@ export async function taskAction(
   if (body?.ok) return { ok: true };
   return { ok: false, reason: body?.message ?? `That didn't save (${response.status}).` };
 }
+
+/**
+ * Saves a correction to a patient's clinical record. Every field is optional
+ * and only the ones present are changed, so the notes editor and the
+ * medications/vaccinations editor can save independently.
+ */
+export async function patientAction(
+  patientId: string,
+  fields: { notes?: string; medications?: string[]; vaccinations?: string[] },
+): Promise<{ ok: boolean; reason?: string }> {
+  const response = await postFunction("patient-action", { patient_id: patientId, ...fields });
+  const body = response.body as { ok?: boolean; message?: string } | null;
+
+  if (body?.ok) return { ok: true };
+  return { ok: false, reason: body?.message ?? `That didn't save (${response.status}).` };
+}
