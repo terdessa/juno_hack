@@ -32,8 +32,9 @@ never have to leave their main screen for.
 4. The transcript comes back as structured answers, a mood read, and any
    safeguarding tags — landing on the dashboard live, with no refresh.
 
-**Status:** steps 1-2 work end to end. Steps 3-4 are unbuilt and blocked
-on an ElevenLabs agent.
+**Status:** all four steps work end to end, verified on real calls to real
+mobiles. The voice agent can also book an appointment and read back a
+patient's medication list mid-call.
 
 ## Scope, after the doctor's feedback
 

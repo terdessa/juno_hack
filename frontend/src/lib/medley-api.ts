@@ -419,30 +419,6 @@ export function parseFrames(buffer: string): { events: AgentEvent[]; rest: strin
   return { events, rest };
 }
 
-export type CopilotResult =
-  | { status: "created"; task: TaskRow }
-  | { status: "needs_input"; message: string }
-  | { status: "error"; message: string; detail?: string };
-
-/**
- * Hands the doctor's loose instruction to the copilot, which identifies the
- * patient, reads their record, and drafts the questions the voice agent will
- * ask. `needs_input` means it wants a clarification rather than guessing.
- */
-export async function createTaskFromInstruction(
-  instruction: string,
-  currentPatientId?: string | null,
-): Promise<CopilotResult> {
-  const response = await postFunction("copilot", {
-    instruction,
-    current_patient_id: currentPatientId ?? null,
-  });
-
-  const body = response.body as CopilotResult | null;
-  if (body && typeof body.status === "string") return body;
-  unusable("copilot", response);
-}
-
 export type DispatchResult =
   | { status: "dispatched"; task_id: string }
   | { status: "error"; message: string };
@@ -456,23 +432,6 @@ export async function runTask(taskId: string): Promise<DispatchResult> {
   unusable("tasks-run", response);
 }
 
-/** Persists an edit made in the dashboard, translating UI names to columns. */
-export async function updateTask(
-  taskId: string,
-  patch: Partial<Pick<CallTask, "purpose" | "patientId" | "assigneeId" | "scheduledAt" | "status">>,
-): Promise<void> {
-  const { error } = await supabase
-    .from("tasks")
-    .update({
-      ...(patch.purpose !== undefined && { purpose: patch.purpose }),
-      ...(patch.patientId !== undefined && { patient_id: patch.patientId }),
-      ...(patch.assigneeId !== undefined && { assignee_id: patch.assigneeId }),
-      ...(patch.scheduledAt !== undefined && { due_at: patch.scheduledAt }),
-      ...(patch.status !== undefined && { status: patch.status }),
-    })
-    .eq("id", taskId);
-  if (error) throw error;
-}
 
 /**
  * Declining, restoring or deleting a call.
