@@ -14,6 +14,7 @@ import { Mark } from "./Mark";
 import { VoiceDock } from "./VoiceDock";
 import { useDockOpen, toggleDock } from "@/lib/dock";
 import { useAgentActions } from "@/lib/useAgentActions";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV = [
   { to: "/", label: "Medley", icon: MessageSquare },
@@ -150,6 +151,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <Command className="h-3 w-3" aria-hidden />
             <span>K to ask Medley</span>
           </button>
+          <ThemeToggle />
           <div className="rounded-lg px-2.5 py-1.5 text-right md:bg-sidebar-accent/60 md:text-left">
             <div className="text-micro font-medium leading-tight text-foreground">Dr Hartley</div>
             <div className="text-micro leading-tight text-muted-foreground">Elm Surgery</div>

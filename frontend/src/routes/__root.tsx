@@ -118,19 +118,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 /**
  * Applies the dark palette from the system preference, before first paint.
  *
- * `styles.css` carried a fully specified `.dark` block — hue-shifted state
- * colours, re-derived shadows — that nothing ever applied, so fifty lines of
- * considered work were a maintained fiction. This is the three lines that make
- * them real. It runs inline in `<head>` rather than in an effect because doing
- * it after hydration means a white flash first, which is worse than no dark
- * mode at all for someone reading this at 2am on a night visit.
+ * Runs inline in `<head>`, not in an effect: doing it after hydration means a
+ * white flash first, which is worse than no dark mode at all for someone
+ * reading this at 2am on a night visit.
  *
- * An explicit `.light`/`.dark` class still wins, so a future toggle needs no
- * change here.
+ * A stored choice beats the system preference, because a doctor who picked
+ * light on a dark laptop meant it. With nothing stored it follows the system,
+ * which is what most people want and nobody has to ask for.
  */
-const APPLY_THEME = `try{var r=document.documentElement;
-if(!r.classList.contains('light')&&!r.classList.contains('dark')&&
-   matchMedia('(prefers-color-scheme: dark)').matches){r.classList.add('dark')}}catch(e){}`;
+const APPLY_THEME = `try{var r=document.documentElement,s=null;
+try{s=localStorage.getItem('medley-theme')}catch(e){}
+var d=s==='dark'||(s!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);
+r.classList.toggle('dark',d);r.classList.toggle('light',!d);
+r.style.colorScheme=d?'dark':'light'}catch(e){}`;
 
 function RootShell({ children }: { children: ReactNode }) {
   return (

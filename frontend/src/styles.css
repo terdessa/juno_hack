@@ -255,6 +255,30 @@
    * and invisible on the two that matter. --ring is ink in both themes, so
    * this clears AA against every surface we have.
    */
+  /*
+   * Theme changes crossfade; nothing else about them moves.
+   *
+   * The transition is on a class the toggle adds for ~200ms and then removes,
+   * rather than living permanently on every element — a standing
+   * `transition: background-color` on `*` would put the same lag on every
+   * hover in the product, which is the tax nobody notices until the whole UI
+   * feels soft.
+   */
+  :root.theme-switching,
+  :root.theme-switching * {
+    transition:
+      background-color 180ms ease-out,
+      border-color 180ms ease-out,
+      color 180ms ease-out,
+      fill 180ms ease-out !important;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :root.theme-switching,
+    :root.theme-switching * {
+      transition: none !important;
+    }
+  }
+
   :focus-visible {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
