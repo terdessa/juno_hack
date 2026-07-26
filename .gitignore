@@ -8,3 +8,7 @@ node_modules/
 HACK_DESCRIPTION.txt
 IDEAS.txt
 elevenlabs-handoff.txt
+
+# Voice comparison samples — scratch audio for picking the agent voice.
+# Regenerate any time; not worth a megabyte in the history.
+voice-samples/
