@@ -9,6 +9,9 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
+import { VoiceDock } from "../components/medley/VoiceDock";
+import { useDockOpen } from "../lib/dock";
+import { useAgentActions } from "../lib/useAgentActions";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -149,11 +152,28 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const dockOpen = useDockOpen();
+  const onAgentAction = useAgentActions();
 
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      {/*
+       * Above the Outlet on purpose. Every route renders its own <Shell>, so a
+       * dock mounted inside one was destroyed and rebuilt on every navigation:
+       * the conversation survived (it lives in a module store) but the open
+       * microphone, a half-streamed reply and wherever the doctor had dragged
+       * the window did not — and it stole the cursor again on each page change.
+       *
+       * Here it outlives navigation entirely, which is the whole point: keep
+       * talking while you go and look something up.
+       *
+       * It sits outside MedleyProvider, so its `reload` is a no-op. That costs
+       * nothing — each route's provider subscribes to the same tables over
+       * realtime, so a task the agent creates still lands on screen.
+       */}
+      {dockOpen && <VoiceDock onAction={onAgentAction} />}
     </QueryClientProvider>
   );
 }

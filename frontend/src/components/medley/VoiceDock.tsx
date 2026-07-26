@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, Square, X, GripHorizontal } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Mic, Square, X, GripHorizontal, PictureInPicture2 } from "lucide-react";
 import { useMedleyStoreOptional } from "@/lib/medley-context";
 import { useAgentConversation } from "@/lib/useAgentConversation";
 import { clearConversation } from "@/lib/conversation";
 import { closeDock } from "@/lib/dock";
+import { usePipWindow } from "@/lib/pip";
 import type { UiAction } from "@/lib/medley-api";
 import { Mark } from "./Mark";
 import { TextComposer } from "./TextComposer";
@@ -99,6 +101,11 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
     dragging.current = null;
   };
 
+  // Chrome and Edge only. Everywhere else the button never appears and the
+  // in-page dock is the whole feature, unchanged.
+  const pip = usePipWindow({ width: WIDTH, height: 620 });
+  const floating = Boolean(pip.pipWindow);
+
   const listening = phase === "listening";
   const label = listening
     ? "Stop and send"
@@ -120,29 +127,43 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
               ? "Say who to ring and why."
               : "";
 
-  return (
+  const body = (
     <section
       ref={panel}
       // A non-modal dialog: `role="dialog"` without `aria-modal`, because
       // nothing behind it is inert and that is the whole point of the thing.
       role="dialog"
       aria-label="Medley"
-      style={{
-        zIndex: "var(--z-palette)",
-        transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
-        width: WIDTH,
-      }}
-      className="fixed left-0 top-0 flex max-h-[min(680px,85vh)] max-w-[calc(100vw-2rem)] flex-col
-                 overflow-hidden rounded-2xl border border-border bg-popover shadow-float"
+      style={
+        floating
+          ? { width: "100%", height: "100vh" }
+          : {
+              zIndex: "var(--z-palette)",
+              transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
+              width: WIDTH,
+            }
+      }
+      className={
+        floating
+          ? "flex h-full w-full flex-col overflow-hidden bg-popover"
+          : `fixed left-0 top-0 flex max-h-[min(680px,85vh)] max-w-[calc(100vw-2rem)] flex-col
+             overflow-hidden rounded-2xl border border-border bg-popover shadow-float`
+      }
     >
       <header
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-        className="flex shrink-0 cursor-grab touch-none items-center gap-2 border-b border-border px-3 py-2.5 active:cursor-grabbing"
+        onPointerDown={floating ? undefined : onPointerDown}
+        onPointerMove={floating ? undefined : onPointerMove}
+        onPointerUp={floating ? undefined : endDrag}
+        onPointerCancel={floating ? undefined : endDrag}
+        className={`flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5 ${
+          floating ? "" : "cursor-grab touch-none active:cursor-grabbing"
+        }`}
       >
-        <GripHorizontal className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+        {/* The OS title bar drags the floating window; a grip inside it would
+            be a handle that does nothing. */}
+        {!floating && (
+          <GripHorizontal className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+        )}
         <Mark className="h-3.5 w-3.5 text-foreground" />
         <span className="flex-1 select-none text-micro font-medium">Medley</span>
         {messages.length > 0 && (
@@ -157,10 +178,22 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
             Clear
           </button>
         )}
+        {pip.supported && !floating && (
+          <button
+            type="button"
+            onClick={() => void pip.open()}
+            title="Float above every window"
+            aria-label="Pop out — float Medley above every window"
+            className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
+          >
+            <PictureInPicture2 className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        )}
         <button
           type="button"
           onClick={() => {
             reset();
+            if (floating) pip.close();
             closeDock();
             document.querySelector<HTMLButtonElement>("[data-dock-toggle]")?.focus();
           }}
@@ -245,6 +278,14 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
       </div>
     </section>
   );
+
+  /*
+   * The React tree stays in this document; only the rendered DOM crosses into
+   * the floating window. That is what lets the doctor pop Medley out
+   * mid-sentence without dropping the microphone or the half-written reply —
+   * the state machine never re-mounts, it just paints somewhere else.
+   */
+  return pip.pipWindow ? createPortal(body, pip.pipWindow.document.body) : body;
 }
 
 function clamp(value: number, min: number, max: number): number {

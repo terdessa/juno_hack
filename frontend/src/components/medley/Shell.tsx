@@ -11,9 +11,7 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import { useMedleyStoreOptional } from "@/lib/medley-context";
 import { Mark } from "./Mark";
-import { VoiceDock } from "./VoiceDock";
 import { useDockOpen, toggleDock } from "@/lib/dock";
-import { useAgentActions } from "@/lib/useAgentActions";
 import { ThemeToggle } from "./ThemeToggle";
 
 const NAV = [
@@ -45,7 +43,6 @@ export function Shell({ children }: { children: ReactNode }) {
   const store = useMedleyStoreOptional();
   const [retrying, setRetrying] = useState(false);
   const dockOpen = useDockOpen();
-  const onAgentAction = useAgentActions();
 
   // One keystroke to Medley, from anywhere. Not a search box: what the doctor
   // wants mid-clinic is to say a sentence, not to find a record.
@@ -200,7 +197,6 @@ export function Shell({ children }: { children: ReactNode }) {
         <main className="mx-auto max-w-[980px] px-5 py-8 sm:px-8">{children}</main>
       </div>
 
-      {dockOpen && <VoiceDock onAction={onAgentAction} />}
     </div>
   );
 }
