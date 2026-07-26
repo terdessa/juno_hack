@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
         body: JSON.stringify({
           text: parsed.data.text,
           model_id: MODEL_ID,
-          voice_settings: { stability: 0.35, similarity_boost: 0.7, speed: 1.05 },
+          voice_settings: { stability: 0.55, similarity_boost: 0.85, speed: 1.05 },
         }),
       },
     );
