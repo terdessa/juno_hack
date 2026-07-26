@@ -29,7 +29,14 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
   const reload = useCallback(() => {
     void store?.reload();
   }, [store]);
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  // Computed up front, not in an effect. The dock only ever renders on the
+  // client (the open flag is false on the server), so `window` is safe here —
+  // and rendering the panel on the first paint is what lets the composer be
+  // focused on mount instead of a frame later.
+  const [pos, setPos] = useState<{ x: number; y: number }>(() => ({
+    x: Math.max(MARGIN, window.innerWidth - WIDTH - MARGIN * 2),
+    y: MARGIN * 2,
+  }));
   const dragging = useRef<{ dx: number; dy: number } | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLElement>(null);
@@ -51,25 +58,9 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
 
   const [draft, setDraft] = useState("");
 
-  // Bottom-right on first paint, then wherever it is put. Measured rather than
-  // hardcoded so it lands on screen on a laptop and a 32-inch monitor alike.
-  useEffect(() => {
-    if (pos) return;
-    setPos({ x: window.innerWidth - WIDTH - MARGIN * 2, y: MARGIN * 2 });
-  }, [pos]);
-
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
   }, [messages, streaming, partial]);
-
-  // ⌘K opened a window and left the cursor behind it, so reaching the composer
-  // of the thing you just summoned meant tabbing through the whole page. On a
-  // product whose premise is that speaking beats filling in, the headline
-  // shortcut was mouse-only.
-  useEffect(() => {
-    const field = panel.current?.querySelector<HTMLTextAreaElement>("textarea");
-    field?.focus();
-  }, []);
 
   // Escape closes it, and focus goes back to the rail button that opened it —
   // otherwise closing drops the keyboard user at the top of the document.
@@ -89,7 +80,6 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
   }, [reset]);
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (!pos) return;
     dragging.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
     (e.target as Element).setPointerCapture(e.pointerId);
   };
@@ -129,8 +119,6 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
             : messages.length === 0
               ? "Say who to ring and why."
               : "";
-
-  if (!pos) return null;
 
   return (
     <section
@@ -245,6 +233,7 @@ export function VoiceDock({ onAction }: { onAction: (a: UiAction) => void }) {
         </div>
 
         <TextComposer
+          autoFocus
           value={draft}
           onChange={setDraft}
           onSubmit={() => {
