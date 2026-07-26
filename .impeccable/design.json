@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-26T00:00:00Z",
+  "title": "Design System: Medley",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "primary",
+        "displayName": "Ink",
+        "canonical": "oklch(0.21 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)", "oklch(0.28 0 0)", "oklch(0.40 0 0)", "oklch(0.52 0 0)",
+          "oklch(0.64 0 0)", "oklch(0.75 0 0)", "oklch(0.86 0 0)", "oklch(0.95 0 0)"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Canvas",
+        "canonical": "oklch(0.985 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)", "oklch(0.28 0 0)", "oklch(0.40 0 0)", "oklch(0.52 0 0)",
+          "oklch(0.64 0 0)", "oklch(0.75 0 0)", "oklch(0.86 0 0)", "oklch(0.985 0 0)"
+        ]
+      },
+      "live-ember": {
+        "role": "secondary",
+        "displayName": "Live Ember",
+        "canonical": "oklch(0.55 0.20 25)",
+        "tonalRamp": [
+          "oklch(0.15 0.20 25)", "oklch(0.28 0.20 25)", "oklch(0.40 0.20 25)", "oklch(0.52 0.20 25)",
+          "oklch(0.64 0.20 25)", "oklch(0.75 0.20 25)", "oklch(0.86 0.20 25)", "oklch(0.95 0.20 25)"
+        ]
+      },
+      "overdue-amber": {
+        "role": "secondary",
+        "displayName": "Overdue Amber",
+        "canonical": "oklch(0.52 0.13 65)",
+        "tonalRamp": [
+          "oklch(0.15 0.13 65)", "oklch(0.28 0.13 65)", "oklch(0.40 0.13 65)", "oklch(0.52 0.13 65)",
+          "oklch(0.64 0.13 65)", "oklch(0.75 0.13 65)", "oklch(0.86 0.13 65)", "oklch(0.95 0.13 65)"
+        ]
+      },
+      "flag-crimson": {
+        "role": "secondary",
+        "displayName": "Flag Crimson",
+        "canonical": "oklch(0.48 0.19 18)",
+        "tonalRamp": [
+          "oklch(0.15 0.19 18)", "oklch(0.28 0.19 18)", "oklch(0.40 0.19 18)", "oklch(0.48 0.19 18)",
+          "oklch(0.60 0.19 18)", "oklch(0.72 0.19 18)", "oklch(0.84 0.19 18)", "oklch(0.95 0.19 18)"
+        ]
+      },
+      "done-moss": {
+        "role": "secondary",
+        "displayName": "Done Moss",
+        "canonical": "oklch(0.46 0.10 155)",
+        "tonalRamp": [
+          "oklch(0.15 0.10 155)", "oklch(0.28 0.10 155)", "oklch(0.40 0.10 155)", "oklch(0.46 0.10 155)",
+          "oklch(0.60 0.10 155)", "oklch(0.72 0.10 155)", "oklch(0.84 0.10 155)", "oklch(0.95 0.10 155)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "Page and section titles (h1-h4). Weight and tracking carry the hierarchy, not a bespoke size scale." },
+      "reading": { "displayName": "Reading", "purpose": "Prose the doctor actually reads: call summaries, transcripts, agent replies." },
+      "body": { "displayName": "Body", "purpose": "Default interface text, labels, buttons." },
+      "micro": { "displayName": "Micro", "purpose": "Dense metadata: timestamps, chips, table furniture." }
+    },
+    "shadows": [
+      { "name": "soft", "value": "0 1px 2px oklch(0 0 0 / 0.04), 0 2px 8px oklch(0 0 0 / 0.04)", "purpose": "Resting elevation: cards, the active nav pill, the mic button at rest." },
+      { "name": "float", "value": "0 12px 40px oklch(0 0 0 / 0.12), 0 2px 8px oklch(0 0 0 / 0.06)", "purpose": "Genuinely detached elements: the patient peek popover, the active mic button." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Default easing for slides, presses, and the mode-switch thumb." },
+      { "name": "pulse-ring", "value": "1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite", "purpose": "Status dot for a call in progress." },
+      { "name": "mic-ring", "value": "2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite", "purpose": "Two offset rings breathing outward from the mic button while listening or speaking." },
+      { "name": "eq-bar", "value": "900ms cubic-bezier(0.4, 0, 0.6, 1) infinite", "purpose": "Three-bar equaliser while Medley is speaking." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The default call-to-action: ink fill, near-white text.",
+      "html": "<button class=\"ds-btn-primary\">Call now</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 8px; background: oklch(0.21 0 0); color: oklch(0.99 0 0); font-size: 0.875rem; font-weight: 500; border: none; cursor: pointer; transition: opacity 150ms ease-out, transform 120ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-primary:hover { opacity: 0.9; } .ds-btn-primary:focus-visible { outline: 2px solid oklch(0.21 0 0); outline-offset: 2px; } .ds-btn-primary:active { transform: scale(0.985); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action: hairline border, transparent fill.",
+      "html": "<button class=\"ds-btn-outline\">See all calls</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 8px; background: transparent; color: oklch(0.21 0 0); border: 1px solid oklch(0.68 0 0); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background-color 150ms ease-out; } .ds-btn-outline:hover { background: oklch(0.955 0 0); } .ds-btn-outline:focus-visible { outline: 2px solid oklch(0.21 0 0); outline-offset: 2px; }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Text field with the field-only border, kept darker than a row divider so it reads as a control.",
+      "html": "<input class=\"ds-input\" placeholder=\"Ring John tomorrow about the new tablets\" />",
+      "css": ".ds-input { height: 36px; width: 100%; padding: 0 12px; border-radius: 8px; border: 1px solid oklch(0.68 0 0); background: transparent; color: oklch(0.21 0 0); font-size: 0.9375rem; } .ds-input::placeholder { color: oklch(0.47 0 0); } .ds-input:focus-visible { outline: 2px solid oklch(0.21 0 0); outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge-neutral",
+      "description": "Mood/status pill. Colour maps to one of the four named clinical states; neutral gets no colour at all.",
+      "html": "<span class=\"ds-badge ds-badge--flag\">Distressed</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 500; } .ds-badge--neutral { background: oklch(0.955 0 0); color: oklch(0.47 0 0); } .ds-badge--flag { background: oklch(0.96 0.03 18); color: oklch(0.48 0.19 18); } .ds-badge--overdue { background: oklch(0.96 0.035 75); color: oklch(0.52 0.13 65); } .ds-badge--done { background: oklch(0.95 0.03 155); color: oklch(0.46 0.10 155); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "The base elevated surface: a distinct plane above canvas via background alone, no shadow at rest.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card__title\">Margaret Wren</div><div class=\"ds-card__meta\">78 &middot; NHS 943 221 8871</div></div>",
+      "css": ".ds-card { background: oklch(1 0 0); color: oklch(0.21 0 0); border: 1px solid oklch(0.915 0 0); border-radius: 14px; padding: 24px; } .ds-card__title { font-weight: 600; font-size: 1.125rem; line-height: 1.2; } .ds-card__meta { margin-top: 4px; font-size: 0.875rem; color: oklch(0.47 0 0); }"
+    },
+    {
+      "name": "Mode Switch",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Signature control: a two-option pill radiogroup with one sliding thumb, used to choose voice vs. text conversation.",
+      "html": "<div class=\"ds-modeswitch\"><span class=\"ds-modeswitch__thumb\"></span><button class=\"ds-modeswitch__opt ds-modeswitch__opt--active\">Speak</button><button class=\"ds-modeswitch__opt\">Type</button></div>",
+      "css": ".ds-modeswitch { position: relative; display: grid; grid-template-columns: 1fr 1fr; width: 280px; border-radius: 9999px; border: 1px solid oklch(0.915 0 0); background: oklch(0.955 0 0); padding: 4px; } .ds-modeswitch__thumb { position: absolute; inset: 4px auto 4px 4px; width: calc(50% - 4px); border-radius: 9999px; background: oklch(1 0 0); box-shadow: 0 1px 2px oklch(0 0 0 / 0.04), 0 2px 8px oklch(0 0 0 / 0.04); transition: transform 200ms cubic-bezier(0.16,1,0.3,1); } .ds-modeswitch__opt { position: relative; z-index: 1; height: 44px; border: none; background: transparent; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; color: oklch(0.47 0 0); cursor: pointer; } .ds-modeswitch__opt--active { color: oklch(0.21 0 0); }"
+    },
+    {
+      "name": "Voice Console Mic",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Signature control: the large circular mic button, resting state shown; active state fills ink and adds two breathing rings (see motion.mic-ring).",
+      "html": "<button class=\"ds-mic\" aria-label=\"Start talking to Medley\"><svg width=\"28\" height=\"28\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z\"></path><path d=\"M19 10v2a7 7 0 0 1-14 0v-2\"></path><line x1=\"12\" y1=\"19\" x2=\"12\" y2=\"23\"></line><line x1=\"8\" y1=\"23\" x2=\"16\" y2=\"23\"></line></svg></button>",
+      "css": ".ds-mic { display: grid; place-items: center; width: 80px; height: 80px; border-radius: 9999px; background: oklch(1 0 0); color: oklch(0.21 0 0); border: 1px solid oklch(0.68 0 0); box-shadow: 0 1px 2px oklch(0 0 0 / 0.04), 0 2px 8px oklch(0 0 0 / 0.04); cursor: pointer; transition: background-color 200ms, box-shadow 200ms; } .ds-mic:hover { background: oklch(0.955 0 0); border-color: oklch(0.21 0 0 / 0.3); } .ds-mic:focus-visible { outline: 2px solid oklch(0.21 0 0); outline-offset: 4px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Instrument",
+    "overview": "Medley reads like a piece of clinical instrumentation, not a SaaS dashboard wearing a healthcare skin. The canvas is a true neutral at chroma 0 — no warm cream tint, because a paper-toned near-white is the saturated AI default and reads as generated the moment a second person has seen a few. Nothing is coloured for decoration. Primary actions are ink-filled, not branded; surfaces are grey-on-grey, distinguished by two planes (a sidebar rail one shade off the content) rather than by hue.\n\nColour is a clinical signal, not a mood. Exactly four things in the entire product carry saturated colour — a call happening right now, a follow-up gone overdue, a safeguarding or low-mood flag, a completed call — and nothing else is allowed to borrow those hues. A doctor reading the screen from a metre away between patients can tell what needs attention without hunting, and a quiet overdue case is exactly as visually loud as an urgent one, because loudness was never the mechanism.\n\nWarmth is deliberate but structural, not material: it lives in the copy voice and in small physical details — a pressed-state scale on every tappable control, a mic button that breathes with two offset rings while listening, an equaliser that dances while Medley speaks. A display serif was tried on patient names and rejected: it read as warmth in a mock-up and as inconsistency in a tool opened forty times a day. One family, many weights, does the whole job.",
+    "keyCharacteristics": [
+      "True neutral (chroma 0) canvas and ink — no warm or cool tint anywhere except the four state colours",
+      "Exactly four saturated hues in the whole system, each meaning one clinical state, never decorative",
+      "Single sans family (Geist) at multiple weights instead of a display/body pairing",
+      "Two-plane structure: a recessed sidebar rail against a lighter content plane",
+      "Named, motion-driven state: pulsing dots, breathing mic rings, an equaliser — always paired with a written status word, never colour or motion alone",
+      "Every animated cue has a static reduced-motion equivalent that still communicates the same state"
+    ],
+    "rules": [
+      { "name": "The Four Signals Rule", "body": "Saturated colour exists nowhere except Live Ember, Overdue Amber, Flag Crimson, and Done Moss. If a new state needs colour, it either maps onto one of these four or the system has grown a fifth meaning — treat that as a real design decision, not a quick addition.", "section": "colors" },
+      { "name": "The Colour-Is-Never-Alone Rule", "body": "Every colour-coded state also carries a written word or an accessible label. A status dot next to its own label is decorative; a status dot standing alone announces itself as an image with a name.", "section": "colors" },
+      { "name": "The One-Family Rule", "body": "No second typeface, ever, at any weight. Hierarchy is weight + size + spacing, because a label opened forty times a day should not also carry a font decision.", "section": "typography" },
+      { "name": "Tabular Numerals Rule", "body": "Anything that updates in place — call durations, timestamps, live readings — uses tabular-nums so digits don't jitter sideways as they change.", "section": "typography" },
+      { "name": "The Two-Plane Rule", "body": "Depth communicates structure (rail vs. content, resting vs. floating), never brand or decoration. A third shadow tier is a sign a component needs restructuring, not a bigger shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep colour to the four named states (Live Ember, Overdue Amber, Flag Crimson, Done Moss). Anything else stays neutral.",
+      "Do pair every colour cue with a written word or accessible label — colour is never the sole carrier of state.",
+      "Do use the named z-index scale (--z-rail … --z-palette) for any new overlay instead of an arbitrary value.",
+      "Do give every animated state cue (pulses, rings, equalisers) a static prefers-reduced-motion equivalent that still communicates the change.",
+      "Do keep the input-field border (~3:1) visibly darker than the row-divider border (~1.23:1) — they answer different questions."
+    ],
+    "donts": [
+      "Don't introduce a second typeface, including a display serif. It was tried on patient names and rejected as inconsistent in a tool opened forty times a day.",
+      "Don't tint the canvas or card surfaces warm (cream, paper-tone). The neutral is chroma-0 on purpose.",
+      "Don't give the 'neutral' mood, 'declined' status, or 'queued' status any colour beyond the quiet grey.",
+      "Don't add a new shadow tier beyond Soft and Float. If something needs a third level of depth, restructure the plane instead.",
+      "Don't style focus rings per component. One :focus-visible rule at the base layer covers everything."
+    ]
+  }
+}
